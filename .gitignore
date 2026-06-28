@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+# Environment (NUNCA subir a GitHub)
+.env
+.env.local
+.env.production
+
+# Editor
+.DS_Store
+*.log
