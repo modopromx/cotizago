@@ -43,7 +43,7 @@ export default function AdminEmailTemplatesPage() {
   }, [])
 
   const get = (id: string, field: keyof EmailTemplate) =>
-    (edited[id]?.[field] as string) ?? templates.find(t => t.id === id)?.[field as any] ?? ''
+    (edited[id]?.[field] as string) ?? (templates.find(t => t.id === id)?.[field] as string) ?? ''
 
   const set = (id: string, field: keyof EmailTemplate, val: string) =>
     setEdited(e => ({ ...e, [id]: { ...(e[id] ?? {}), [field]: val } }))
