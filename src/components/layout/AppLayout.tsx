@@ -32,11 +32,9 @@ export default function AppLayout() {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="px-4 py-5 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-            <FileText className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-slate-800 text-lg">CotizaGo</span>
+        <div className="flex items-center gap-2.5">
+          <img src="/logo-icon.svg" width={30} height={35} alt="CotizaGo" />
+          <span className="font-extrabold text-slate-800 text-lg tracking-tight">CotizaGo</span>
         </div>
       </div>
 

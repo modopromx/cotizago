@@ -28,10 +28,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 text-white mb-2">
-            <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold">CotizaGo</span>
+            <img src="/logo-icon.svg" width={38} height={45} alt="CotizaGo" />
+            <span className="text-2xl font-extrabold tracking-tight">CotizaGo</span>
           </div>
           <p className="text-navy-300 text-sm">Cotizaciones profesionales en minutos</p>
         </div>

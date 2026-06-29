@@ -63,9 +63,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5 text-white mb-2 hover:opacity-80 transition-opacity">
-            <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/30">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
+            <img src="/logo-icon.svg" width={38} height={45} alt="CotizaGo" />
             <span className="text-2xl font-bold">CotizaGo</span>
           </Link>
           <p className="text-slate-400 text-sm mt-1">La forma más rápida de cotizar en LATAM</p>

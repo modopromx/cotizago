@@ -40,8 +40,14 @@
   }
 }
 
+/* Progress bar animation */
+@keyframes progress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
 /* Scrollbar delgado */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-track { @pply bg-transparent; }
 ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
