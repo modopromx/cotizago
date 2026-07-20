@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   FileText, MessageCircle, Mail, Smartphone, RefreshCw,
   ArrowRight, Play, Check, Pencil, Send, Menu, X,
+  Home, Users, Settings, TrendingUp, Plus,
 } from 'lucide-react'
 import Logo from '../../components/Logo'
 
@@ -15,16 +16,15 @@ const NAV_LINKS = [
 
 const IDEAL_PARA = ['Freelancers', 'Servicios', 'Comercios', 'Agencias', 'Profesionales']
 
+// La primera (PDF) se pinta como tarjeta grande con preview; el resto, normales.
 const FEATURES = [
-  { tag: 'PDF', icon: FileText, title: 'PDF profesional en segundos',
-    desc: 'Agrega tu logotipo, productos, impuestos, descuentos y condiciones. Nosotros hacemos que se vea impecable.' },
-  { tag: 'WA', icon: MessageCircle, title: 'Envía por WhatsApp',
+  { icon: MessageCircle, title: 'Envía por WhatsApp',
     desc: 'Comparte la cotización con tu cliente sin descargar archivos ni cambiar de aplicación.' },
-  { tag: '@', icon: Mail, title: 'Envío por email',
+  { icon: Mail, title: 'Envío por email',
     desc: 'Personaliza el mensaje y envía el PDF directamente al correo de tu prospecto.' },
-  { tag: 'PWA', icon: Smartphone, title: 'Funciona como app',
+  { icon: Smartphone, title: 'Funciona como app',
     desc: 'Instálala en tu celular. No necesitas descargarla desde ninguna tienda.' },
-  { tag: '↻', icon: RefreshCw, title: 'Control y seguimiento',
+  { icon: RefreshCw, title: 'Control y seguimiento',
     desc: 'Consulta, duplica, edita o cancela cotizaciones desde un solo lugar.' },
 ]
 
@@ -114,43 +114,75 @@ function Hero() {
 }
 
 function HeroMockup() {
+  const navIcons = [Home, FileText, Users, Settings]
   return (
     <div className="relative">
-      <div className="card p-5 shadow-card-hover">
-        <div className="flex items-center justify-between mb-4">
-          <Logo className="scale-90 origin-left" />
-          <span className="w-8 h-8 rounded-full bg-navy-900 text-white text-xs font-bold flex items-center justify-center">AV</span>
+      <div className="card p-0 shadow-card-hover flex overflow-hidden">
+        {/* riel de navegación lateral */}
+        <div className="w-12 bg-navy-900 flex flex-col items-center py-4 gap-5 shrink-0">
+          <span className="w-7 h-7 rounded-lg bg-primary-500 flex items-center justify-center text-white text-[10px] font-bold">CG</span>
+          {navIcons.map((Ic, i) => (
+            <Ic key={i} className={`w-4 h-4 ${i === 0 ? 'text-white' : 'text-navy-300'}`} />
+          ))}
         </div>
-        <div className="rounded-xl bg-fondo p-4">
-          <p className="text-sm text-slate-500">Panel principal</p>
-          <p className="font-bold text-navy-900">Hola, Alan 👋</p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-lg p-3 border border-slate-100">
-              <p className="text-xs text-slate-400">Folios disponibles</p>
-              <p className="text-2xl font-extrabold text-navy-900">43</p>
+        <div className="flex-1 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs text-slate-400">Panel principal</p>
+              <p className="font-bold text-navy-900">Hola, Alan 👋</p>
             </div>
-            <div className="bg-white rounded-lg p-3 border border-slate-100">
-              <p className="text-xs text-slate-400">Cotizado este mes</p>
-              <p className="text-2xl font-extrabold text-primary-600">$86,450</p>
+            <span className="inline-flex items-center gap-1 bg-navy-900 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg">
+              <Plus className="w-3 h-3" /> Nueva cotización
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="bg-fondo rounded-lg p-2.5">
+              <p className="text-[10px] text-slate-400">Folios disponibles</p>
+              <p className="text-xl font-extrabold text-navy-900">43</p>
+              <p className="text-[10px] text-slate-400">de 50 folios</p>
+            </div>
+            <div className="bg-fondo rounded-lg p-2.5">
+              <p className="text-[10px] text-slate-400">Cotizado este mes</p>
+              <p className="text-xl font-extrabold text-primary-600">$86,450</p>
+              <p className="text-[10px] text-success-600 flex items-center gap-0.5"><TrendingUp className="w-3 h-3" /> 12.5%</p>
+            </div>
+            <div className="bg-fondo rounded-lg p-2.5">
+              <p className="text-[10px] text-slate-400">Cotizaciones</p>
+              <p className="text-xl font-extrabold text-navy-900">27</p>
+              <p className="text-[10px] text-slate-400">8 aceptadas</p>
             </div>
           </div>
-          <p className="mt-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cotizaciones recientes</p>
+          <p className="mt-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cotizaciones recientes</p>
           <div className="mt-2 space-y-1.5">
             {[['CTZ-0027', 'Grupo Nova', '$12,800'], ['CTZ-0026', 'Café Central', '$4,250'], ['CTZ-0025', 'Punto Digital', '$8,900']].map(r => (
-              <div key={r[0]} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-100 text-sm">
-                <span className="font-mono text-xs text-slate-500">{r[0]}</span>
-                <span className="text-slate-600">{r[1]}</span>
+              <div key={r[0]} className="flex items-center justify-between bg-fondo rounded-lg px-3 py-2 text-sm">
+                <span className="font-mono text-[11px] text-slate-500">{r[0]} · {r[1]}</span>
                 <span className="font-semibold text-navy-900">{r[2]}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
-      <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-3 flex items-center gap-2">
-        <span className="w-8 h-8 rounded-full bg-success-100 text-success-600 flex items-center justify-center"><Check className="w-4 h-4" /></span>
+
+      {/* tarjeta flotante: cotización lista para WhatsApp */}
+      <div className="absolute -right-4 -bottom-8 w-52 card p-4 shadow-card-hover hidden sm:block">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Cotización</p>
+        <p className="font-mono text-xs text-slate-500">#CTZ-0027</p>
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-xs text-slate-400">Total</span>
+          <span className="font-extrabold text-navy-900">$12,800</span>
+        </div>
+        <button className="mt-3 w-full inline-flex items-center justify-center gap-1.5 bg-success-500 text-white text-xs font-semibold rounded-lg py-2">
+          <MessageCircle className="w-3.5 h-3.5" /> Enviar por WhatsApp
+        </button>
+      </div>
+
+      {/* chip: cotización enviada */}
+      <div className="absolute -left-4 top-8 bg-white rounded-xl shadow-card-hover border border-slate-100 px-3 py-2 flex items-center gap-2 hidden sm:flex">
+        <span className="w-7 h-7 rounded-full bg-success-100 text-success-600 flex items-center justify-center"><Check className="w-4 h-4" /></span>
         <div>
-          <p className="text-xs font-semibold text-navy-900">Cotización enviada</p>
-          <p className="text-[11px] text-slate-400">WhatsApp · Ahora</p>
+          <p className="text-[11px] font-semibold text-navy-900">Cotización enviada</p>
+          <p className="text-[10px] text-slate-400">WhatsApp · Ahora</p>
         </div>
       </div>
     </div>
@@ -207,16 +239,26 @@ function AppComingSoon() {
           <div className="p-4">
             <Logo className="scale-90 origin-left" />
             <div className="mt-4 rounded-xl bg-fondo p-3">
-              <p className="text-[11px] text-slate-500">Panel principal</p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Buen día</p>
               <p className="text-sm font-bold text-navy-900">Hola, Alan 👋</p>
               <div className="mt-3 bg-white rounded-lg p-3 border border-slate-100">
-                <p className="text-[10px] text-slate-400">Folios disponibles</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Folios disponibles</p>
                 <p className="text-2xl font-extrabold text-primary-600">43</p>
+                <p className="text-[10px] text-slate-400">7 de 50 utilizados</p>
               </div>
               <button className="mt-3 w-full text-xs font-semibold text-white bg-navy-900 rounded-lg py-2">+ Nueva cotización</button>
             </div>
           </div>
         </div>
+        {/* chips flotantes de tiendas */}
+        <span className="absolute left-0 top-10 bg-white rounded-xl shadow-card-hover border border-slate-100 px-3 py-2 text-center hidden sm:block">
+          <span className="block text-xs font-bold text-navy-900">iOS</span>
+          <span className="block text-[10px] text-slate-400">Próximamente</span>
+        </span>
+        <span className="absolute right-0 bottom-12 bg-white rounded-xl shadow-card-hover border border-slate-100 px-3 py-2 text-center hidden sm:block">
+          <span className="block text-xs font-bold text-navy-900">Android</span>
+          <span className="block text-[10px] text-slate-400">Próximamente</span>
+        </span>
       </div>
     </section>
   )
@@ -249,7 +291,33 @@ function Features() {
         <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-navy-900">Cotizar nunca fue tan fácil</h2>
         <p className="mt-4 text-slate-600">Olvídate de formatos complicados. Cotiza Go te ayuda a verte profesional y responder antes que tu competencia.</p>
       </div>
-      <div className="mt-14 grid md:grid-cols-3 gap-5">
+      <div className="mt-14 grid md:grid-cols-3 gap-5 md:grid-rows-2">
+        {/* Tarjeta grande: PDF profesional, ocupa 2 filas con preview embebido */}
+        <div className="card p-6 md:row-span-2 flex flex-col hover:shadow-card-hover transition-shadow group">
+          <span className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-primary-50 text-primary-600 group-hover:bg-primary-500 group-hover:text-white transition-colors">
+            <FileText className="w-5 h-5" />
+          </span>
+          <h3 className="mt-4 font-semibold text-navy-900">PDF profesional en segundos</h3>
+          <p className="mt-2 text-sm text-slate-500 leading-relaxed">Agrega tu logotipo, productos, impuestos, descuentos y condiciones. Nosotros hacemos que se vea impecable.</p>
+          <div className="mt-6 flex-1 flex items-end">
+            <div className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Cotización</span>
+                <span className="font-mono text-[11px] text-slate-400">#0048</span>
+              </div>
+              <p className="mt-3 font-semibold text-navy-900 text-sm">Tu Empresa</p>
+              <div className="mt-3 space-y-1.5">
+                <div className="h-2 bg-slate-100 rounded w-full" />
+                <div className="h-2 bg-slate-100 rounded w-4/5" />
+                <div className="h-2 bg-slate-100 rounded w-3/5" />
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total</span>
+                <span className="font-extrabold text-navy-900">$18,450.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
         {FEATURES.map(f => (
           <div key={f.title} className="card p-6 hover:shadow-card-hover transition-shadow group">
             <span className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-primary-50 text-primary-600 group-hover:bg-primary-500 group-hover:text-white transition-colors">
@@ -328,7 +396,7 @@ function Pricing() {
           </div>
         ))}
       </div>
-      <p className="mt-8 text-center text-sm text-slate-400">Pago seguro · Activación inmediata · Folios acumulables</p>
+      <p className="mt-8 text-center text-sm text-slate-400">🔒 Pago seguro · Activación inmediata · Folios acumulables</p>
     </section>
   )
 }
@@ -358,7 +426,7 @@ function Footer() {
   return (
     <footer className="bg-white border-t border-slate-100">
       <div className="max-w-6xl mx-auto px-4 py-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-2">
+        <div>
           <Logo />
           <p className="mt-3 text-sm text-slate-500 max-w-xs">Cotizaciones profesionales, estés donde estés.</p>
         </div>
@@ -370,6 +438,10 @@ function Footer() {
             </ul>
           </div>
         ))}
+        <div>
+          <p className="font-semibold text-navy-900 text-sm">Cotiza sin complicaciones</p>
+          <p className="mt-3 text-sm text-slate-500 max-w-xs">Disponible desde cualquier dispositivo.</p>
+        </div>
       </div>
       <div className="border-t border-slate-100">
         <p className="max-w-6xl mx-auto px-4 py-5 text-xs text-slate-400">© 2026 Cotiza Go. Todos los derechos reservados.</p>
