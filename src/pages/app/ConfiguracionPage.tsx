@@ -2,103 +2,144 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
-import { Save, Building2, CreditCard, Upload } from 'lucide-react'
+import { Save, Building2, CreditCard, Palette } from 'lucide-react'
+
+const REGIMENES = [
+  { v: '601', l: '601 · General de Ley Personas Morales' },
+  { v: '612', l: '612 · Personas Físicas con Actividades Empresariales' },
+  { v: '626', l: '626 · RESICO' },
+  { v: '605', l: '605 · Sueldos y Salarios' },
+]
 
 export default function ConfiguracionPage() {
-  const { user, profile, refreshProfile } = useAuth()
-  const [form, setForm] = useState<any>({})
+  const { profile } = useAuth()
+  const wsId = profile?.workspace_id
+  const [form, setForm] = useState<any>({ tipo: 'empresa', pais: 'MX', moneda: 'MXN', impuesto_default: 16, vigencia_dias: 15, color_principal: '#08AEB6' })
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [tab, setTab] = useState<'empresa' | 'pago'>('empresa')
 
-  useEffect(() => { if (profile) setForm({ ...profile }) }, [profile])
+  useEffect(() => {
+    if (!wsId) return
+    supabase.from('empresas').select('*').eq('workspace_id', wsId).maybeSingle()
+      .then(({ data }) => { if (data) setForm((f: any) => ({ ...f, ...data })); setLoading(false) })
+  }, [wsId])
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f: any) => ({ ...f, [k]: e.target.value }))
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!wsId) { toast.error('No se encontró tu workspace'); return }
     setSaving(true)
-    const { error } = await supabase.from('profiles').update({
-      nombre: form.nombre, empresa: form.empresa, razon_social: form.razon_social, rfc: form.rfc,
-      telefono: form.telefono, direccion: form.direccion, email_empresa: form.email_empresa,
-      codigo_postal: form.codigo_postal, pais: form.pais, moneda: form.moneda,
-      banco: form.banco, titular: form.titular, numero_cuenta: form.numero_cuenta,
-      clabe: form.clabe, link_pago: form.link_pago,
-      updated_at: new Date().toISOString()
-    }).eq('id', user.id)
-    if (error) toast.error('Error al guardar')
-    else { toast.success('Configuración guardada'); await refreshProfile() }
+    const { error } = await supabase.from('empresas').upsert(
+      { ...form, workspace_id: wsId, updated_at: new Date().toISOString() },
+      { onConflict: 'workspace_id' }
+    )
+    if (error) toast.error('Error al guardar: ' + error.message)
+    else toast.success('Configuración guardada')
     setSaving(false)
   }
 
-  const tabs = [
-    { id: 'empresa', label: 'Datos de empresa', icon: Building2 },
-    { id: 'pago', label: 'Datos de pago', icon: CreditCard },
-  ]
+  if (loading) return <div className="card p-8 text-center text-slate-500 text-sm">Cargando...</div>
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <form onSubmit={handleSave} className="max-w-3xl space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Configuración</h1>
-        <p className="text-slate-500 text-sm">Personaliza tu información para las cotizaciones</p>
+        <h1 className="text-2xl font-bold text-navy-900">Configuración de tu empresa</h1>
+        <p className="text-slate-500 text-sm">Estos datos aparecerán automáticamente en todas tus cotizaciones.</p>
       </div>
 
-      <div className="flex gap-2 bg-slate-100 p-1 rounded-xl w-fit">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <t.icon className="w-4 h-4" />{t.label}
-          </button>
-        ))}
-      </div>
-
-      <form onSubmit={handleSave} className="card p-6 space-y-4">
-        {tab === 'empresa' && (
-          <>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Tu nombre</label><input className="input" value={form.nombre ?? ''} onChange={set('nombre')} /></div>
-              <div><label className="label">Empresa</label><input className="input" value={form.empresa ?? ''} onChange={set('empresa')} /></div>
-              <div className="col-span-2"><label className="label">Razón social</label><input className="input" value={form.razon_social ?? ''} onChange={set('razon_social')} /></div>
-              <div><label className="label">RFC</label><input className="input" value={form.rfc ?? ''} onChange={set('rfc')} /></div>
-              <div><label className="label">Teléfono</label><input className="input" value={form.telefono ?? ''} onChange={set('telefono')} /></div>
-              <div className="col-span-2"><label className="label">Correo empresa</label><input type="email" className="input" value={form.email_empresa ?? ''} onChange={set('email_empresa')} /></div>
-              <div className="col-span-2"><label className="label">Dirección</label><input className="input" value={form.direccion ?? ''} onChange={set('direccion')} /></div>
-              <div><label className="label">País</label>
-                <select className="input" value={form.pais ?? 'MX'} onChange={set('pais')}>
-                  <option value="MX">México</option><option value="CO">Colombia</option><option value="AR">Argentina</option><option value="CL">Chile</option><option value="PE">Perú</option><option value="US">EE.UU.</option>
-                </select>
-              </div>
-              <div><label className="label">Moneda</label>
-                <select className="input" value={form.moneda ?? 'MXN'} onChange={set('moneda')}>
-                  <option value="MXN">MXN</option><option value="USD">USD</option><option value="COP">COP</option>
-                </select>
-              </div>
-            </div>
-          </>
-        )}
-
-        {tab === 'pago' && (
-          <>
-            <p className="text-sm text-slate-500 bg-slate-50 rounded-lg p-3">
-              Estos datos aparecerán en tus cotizaciones para que los clientes sepan a dónde transferir.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="label">Banco</label><input className="input" value={form.banco ?? ''} onChange={set('banco')} /></div>
-              <div><label className="label">Titular</label><input className="input" value={form.titular ?? ''} onChange={set('titular')} /></div>
-              <div><label className="label">Número de cuenta</label><input className="input" value={form.numero_cuenta ?? ''} onChange={set('numero_cuenta')} /></div>
-              <div><label className="label">CLABE interbancaria</label><input className="input" value={form.clabe ?? ''} onChange={set('clabe')} /></div>
-              <div className="col-span-2"><label className="label">Link de pago (Clip, Conekta, MercadoPago...)</label><input className="input" placeholder="https://..." value={form.link_pago ?? ''} onChange={set('link_pago')} /></div>
-            </div>
-          </>
-        )}
-
-        <div className="flex justify-end pt-2">
-          <button type="submit" disabled={saving} className="btn-primary">
-            {saving && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-            <Save className="w-4 h-4" /> Guardar cambios
-          </button>
+      {/* Tipo */}
+      <div className="card p-5">
+        <p className="label">Tipo de emisor</p>
+        <div className="flex gap-2 bg-fondo p-1 rounded-xl w-fit">
+          {[['empresa', 'Empresa / Marca'], ['persona_fisica', 'Persona física']].map(([v, l]) => (
+            <button key={v} type="button" onClick={() => setForm((f: any) => ({ ...f, tipo: v }))}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${form.tipo === v ? 'bg-white text-navy-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              {l}
+            </button>
+          ))}
         </div>
-      </form>
-    </div>
+      </div>
+
+      {/* Datos fiscales */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center gap-2 text-navy-900 font-semibold"><Building2 className="w-4 h-4 text-primary-600" /> Datos generales y fiscales</div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div><label className="label">Nombre comercial</label><input className="input" value={form.nombre_comercial ?? ''} onChange={set('nombre_comercial')} /></div>
+          <div><label className="label">Razón social</label><input className="input" value={form.razon_social ?? ''} onChange={set('razon_social')} /></div>
+          <div><label className="label">RFC / ID fiscal</label><input className="input" value={form.rfc ?? ''} onChange={set('rfc')} /></div>
+          <div><label className="label">Régimen fiscal</label>
+            <select className="input" value={form.regimen_fiscal ?? ''} onChange={set('regimen_fiscal')}>
+              <option value="">Selecciona...</option>
+              {REGIMENES.map(r => <option key={r.v} value={r.v}>{r.l}</option>)}
+            </select>
+          </div>
+          <div><label className="label">País</label>
+            <select className="input" value={form.pais ?? 'MX'} onChange={set('pais')}>
+              <option value="MX">México</option><option value="US">Estados Unidos</option><option value="CO">Colombia</option><option value="AR">Argentina</option><option value="CL">Chile</option>
+            </select>
+          </div>
+          <div><label className="label">Código postal</label><input className="input" value={form.codigo_postal ?? ''} onChange={set('codigo_postal')} /></div>
+          <div><label className="label">Teléfono</label><input className="input" value={form.telefono ?? ''} onChange={set('telefono')} /></div>
+          <div><label className="label">Email de empresa</label><input type="email" className="input" value={form.email ?? ''} onChange={set('email')} /></div>
+          <div className="sm:col-span-2"><label className="label">Dirección fiscal</label><input className="input" value={form.direccion ?? ''} onChange={set('direccion')} /></div>
+          <div className="sm:col-span-2"><label className="label">Sitio web</label><input className="input" placeholder="https://..." value={form.sitio_web ?? ''} onChange={set('sitio_web')} /></div>
+          <div className="sm:col-span-2"><label className="label">Logo (URL de imagen)</label><input className="input" placeholder="https://.../logo.png" value={form.logo_url ?? ''} onChange={set('logo_url')} /></div>
+        </div>
+      </div>
+
+      {/* Estilo de cotización */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center gap-2 text-navy-900 font-semibold"><Palette className="w-4 h-4 text-primary-600" /> Estilo de cotización</div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label">Color principal</label>
+            <div className="flex items-center gap-2">
+              <input type="color" className="h-10 w-14 rounded-lg border border-slate-200 cursor-pointer" value={form.color_principal ?? '#08AEB6'} onChange={set('color_principal')} />
+              <input className="input" value={form.color_principal ?? '#08AEB6'} onChange={set('color_principal')} />
+            </div>
+          </div>
+          <div><label className="label">Moneda predeterminada</label>
+            <select className="input" value={form.moneda ?? 'MXN'} onChange={set('moneda')}>
+              <option value="MXN">MXN · Peso mexicano</option><option value="USD">USD · Dólar americano</option>
+            </select>
+          </div>
+          <div><label className="label">Impuesto predeterminado</label>
+            <select className="input" value={String(form.impuesto_default ?? 16)} onChange={set('impuesto_default')}>
+              <option value="16">IVA 16%</option><option value="8">IVA 8%</option><option value="0">Sin impuestos</option>
+            </select>
+          </div>
+          <div><label className="label">Vigencia predeterminada</label>
+            <select className="input" value={String(form.vigencia_dias ?? 15)} onChange={set('vigencia_dias')}>
+              <option value="15">15 días</option><option value="30">30 días</option><option value="60">60 días</option>
+            </select>
+          </div>
+          <div className="sm:col-span-2"><label className="label">Condiciones comerciales</label>
+            <textarea className="input resize-none" rows={2} placeholder="50% de anticipo y 50% contra entrega..." value={form.condiciones ?? ''} onChange={set('condiciones') as any} />
+          </div>
+        </div>
+      </div>
+
+      {/* Datos de pago */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-center gap-2 text-navy-900 font-semibold"><CreditCard className="w-4 h-4 text-primary-600" /> Datos de pago</div>
+        <p className="text-xs text-slate-500 bg-fondo rounded-lg p-3">Aparecerán en tus cotizaciones para que tus clientes sepan a dónde transferir.</p>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div><label className="label">Banco</label><input className="input" value={form.banco ?? ''} onChange={set('banco')} /></div>
+          <div><label className="label">Titular</label><input className="input" value={form.titular ?? ''} onChange={set('titular')} /></div>
+          <div><label className="label">Número de cuenta</label><input className="input" value={form.numero_cuenta ?? ''} onChange={set('numero_cuenta')} /></div>
+          <div><label className="label">CLABE interbancaria</label><input className="input" value={form.clabe ?? ''} onChange={set('clabe')} /></div>
+          <div className="sm:col-span-2"><label className="label">Link de pago (Clip, Mercado Pago, Stripe...)</label><input className="input" placeholder="https://..." value={form.link_pago ?? ''} onChange={set('link_pago')} /></div>
+        </div>
+      </div>
+
+      <div className="flex justify-end sticky bottom-4">
+        <button type="submit" disabled={saving} className="btn-navy shadow-card-hover">
+          {saving && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+          <Save className="w-4 h-4" /> Guardar configuración
+        </button>
+      </div>
+    </form>
   )
 }
