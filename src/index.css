@@ -62,6 +62,15 @@
           mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
 }
 
+/* Teléfono flotante de la sección "próximamente app" (inclinado + flotando) */
+@keyframes phone-float {
+  0%, 100% { transform: rotate(3deg) translateY(0); }
+  50%      { transform: rotate(3deg) translateY(-14px); }
+}
+.animate-phone-float {
+  animation: phone-float 4s ease-in-out infinite;
+}
+
 /* Scrollbar delgado */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { @apply bg-transparent; }

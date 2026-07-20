@@ -232,35 +232,43 @@ function AppComingSoon() {
         </div>
         <p className="mt-4 text-xs text-slate-400">Mientras tanto, puedes instalar Cotiza Go como PWA desde tu navegador.</p>
       </div>
-      <div className="relative flex justify-center py-6">
-        <div className="absolute inset-0 bg-primary-100/40 blur-3xl rounded-full -z-10" />
-        {/* Teléfono — medidas tomadas del diseño original (218x430, borde 7px navy) */}
-        <div className="w-[218px] rounded-[34px] border-[7px] border-navy-900 bg-fondo px-4 pt-7 pb-6 flex flex-col items-center"
-             style={{ boxShadow: '0 35px 65px rgba(5,38,61,0.25)' }}>
-          <span className="w-16 h-2 rounded-full bg-navy-900 mb-5" />
-          <Logo className="scale-90" />
-          <div className="mt-5 w-full text-left">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Buen día</p>
-            <p className="text-sm font-bold text-navy-900">Hola, Alan 👋</p>
+      <div className="relative flex justify-center py-10">
+        {/* Teléfono — réplica exacta del diseño original: 218x430, borde 7px,
+            inclinado 3° con animación de flotación, tarjeta de folios en degradado. */}
+        <div className="relative w-[218px] h-[430px] rounded-[34px] border-[7px] border-navy-900 pt-[30px] px-[15px] pb-[50px] animate-phone-float"
+             style={{ background: '#f7fafb', boxShadow: '0 35px 65px rgba(5,38,61,0.25)' }}>
+          {/* notch */}
+          <span className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-2 rounded-[10px] bg-navy-900" />
+          <img src="/cotiza-go-logo.png" alt="Cotiza Go" className="w-[90px]" />
+          {/* saludo */}
+          <div className="mt-[21px] mb-3">
+            <small className="block text-[7px] tracking-wide" style={{ color: '#8b9aa2' }}>BUEN DÍA</small>
+            <b className="block mt-0.5 text-base text-navy-900">Hola, Alan 👋</b>
           </div>
-          <div className="mt-3 w-full rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Folios disponibles</p>
-            <p className="text-3xl font-extrabold text-primary-600 leading-tight">43</p>
-            <p className="text-[10px] text-slate-400">7 de 50 utilizados</p>
+          {/* tarjeta de folios — degradado navy→turquesa, texto blanco, barra de progreso */}
+          <div className="rounded-[14px] p-4 text-white" style={{ background: 'linear-gradient(135deg, #06243e, #07838e)' }}>
+            <small className="block text-[7px] tracking-wide" style={{ color: '#93d9d8' }}>FOLIOS DISPONIBLES</small>
+            <strong className="block my-1.5 text-[28px] font-extrabold leading-none">43</strong>
+            <span className="block h-1 rounded" style={{ background: 'rgba(255,255,255,0.2)' }}>
+              <b className="block h-full rounded" style={{ width: '86%', background: '#39d8cf' }} />
+            </span>
+            <span className="block mt-1.5 text-[7px]" style={{ color: '#c3dfe2' }}>7 de 50 utilizados</span>
           </div>
-          <div className="mt-3 w-full rounded-xl bg-white border border-slate-200 shadow-sm py-3 text-center text-sm font-semibold text-navy-900">
-            ＋ Nueva cotización
+          {/* botón nueva cotización */}
+          <div className="mt-[13px] rounded-[11px] bg-white border p-[13px] text-xs shadow-sm" style={{ borderColor: '#dce7eb', color: '#07959b' }}>
+            ＋ <b className="ml-1.5 text-[10px]" style={{ color: '#23465a' }}>Nueva cotización</b>
           </div>
-          <div className="mt-3 w-full rounded-xl bg-white border border-slate-100 py-2.5 flex items-center justify-around text-slate-400">
-            <Home className="w-4 h-4 text-primary-500" /><FileText className="w-4 h-4" /><Users className="w-4 h-4" /><Settings className="w-4 h-4" />
+          {/* barra de navegación inferior */}
+          <div className="absolute bottom-2.5 left-3.5 right-3.5 rounded-xl bg-white flex justify-around p-2.5" style={{ color: '#91a1aa' }}>
+            <Home className="w-4 h-4" style={{ color: '#08a6aa' }} /><FileText className="w-4 h-4" /><Users className="w-4 h-4" /><Settings className="w-4 h-4" />
           </div>
         </div>
         {/* chips flotantes de tiendas */}
-        <span className="absolute left-0 top-16 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
+        <span className="absolute left-2 top-8 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
           <span className="block text-sm font-bold text-navy-900">iOS</span>
           <span className="block text-[10px] text-slate-400">Próximamente</span>
         </span>
-        <span className="absolute right-0 bottom-20 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
+        <span className="absolute right-2 bottom-16 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
           <span className="block text-sm font-bold text-navy-900">Android</span>
           <span className="block text-[10px] text-slate-400">Próximamente</span>
         </span>
