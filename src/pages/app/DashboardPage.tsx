@@ -3,149 +3,239 @@ import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../../lib/utils'
-import { FileText, Users, Package, Zap, TrendingUp, Clock, CheckCircle, Eye, Plus } from 'lucide-react'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  CheckCircle2, Clock, XCircle, DollarSign, Plus, FileText,
+  Download, MessageCircle, Link2, Mail,
+} from 'lucide-react'
+import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts'
+
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+const ESTADO_BADGE: Record<string, string> = {
+  aceptada: 'bg-success-50 text-success-600',
+  rechazada: 'bg-red-50 text-red-600',
+  enviada: 'bg-azul-50 text-azul-600',
+  vista: 'bg-primary-50 text-primary-600',
+  pendiente: 'bg-amber-50 text-amber-600',
+  borrador: 'bg-slate-100 text-slate-500',
+  vencida: 'bg-slate-100 text-slate-500',
+  cancelada: 'bg-slate-100 text-slate-500',
+}
+const ESTADO_LABEL: Record<string, string> = {
+  aceptada: 'Aceptada', rechazada: 'Rechazada', enviada: 'Enviada', vista: 'Vista',
+  pendiente: 'Pendiente', borrador: 'Borrador', vencida: 'Vencida', cancelada: 'Cancelada',
+}
 
 export default function DashboardPage() {
   const { user, profile } = useAuth()
-  const [stats, setStats] = useState({ cotizaciones: 0, clientes: 0, productos: 0, aceptadas: 0, totalEnviado: 0 })
-  const [recientes, setRecientes] = useState<any[]>([])
-  const [chartData, setChartData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [cotis, setCotis] = useState<any[]>([])
 
   useEffect(() => {
     if (!user) return
-    const load = async () => {
-      const [{ count: cot }, { count: cli }, { count: prod }, { data: cotData }] = await Promise.all([
-        supabase.from('cotizaciones').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('clientes').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('activo', true),
-        supabase.from('productos').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('activo', true),
-        supabase.from('cotizaciones').select('estado,total,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
-      ])
-
-      const aceptadas = cotData?.filter(c => c.estado === 'aceptada').length ?? 0
-      const totalEnviado = cotData?.reduce((s, c) => s + (c.total || 0), 0) ?? 0
-
-      setStats({ cotizaciones: cot ?? 0, clientes: cli ?? 0, productos: prod ?? 0, aceptadas, totalEnviado })
-      setRecientes(cotData ?? [])
-
-      // Chart: últimas 6 semanas
-      const now = new Date()
-      const weeks = Array.from({ length: 6 }, (_, i) => {
-        const d = new Date(now)
-        d.setDate(d.getDate() - (5 - i) * 7)
-        return { label: `Sem ${i + 1}`, total: 0 }
-      })
-      setChartData(weeks)
-      setLoading(false)
-    }
-    load()
+    supabase.from('cotizaciones')
+      .select('id,numero,total,estado,created_at,cliente_nombre')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setCotis(data ?? []); setLoading(false) })
   }, [user])
 
-  const statCards = [
-    { label: 'Cotizaciones', value: stats.cotizaciones, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Clientes activos', value: stats.clientes, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Productos', value: stats.productos, icon: Package, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Folios disponibles', value: profile?.folios_balance ?? 0, icon: Zap, color: 'text-primary-600', bg: 'bg-primary-50' },
+  // Métricas
+  const esPendiente = (e: string) => ['enviada', 'vista', 'pendiente'].includes(e)
+  const aceptadas = cotis.filter(c => c.estado === 'aceptada')
+  const pendientes = cotis.filter(c => esPendiente(c.estado))
+  const rechazadas = cotis.filter(c => c.estado === 'rechazada')
+  const respondidas = aceptadas.length + rechazadas.length
+  const valorAceptado = aceptadas.reduce((s, c) => s + (Number(c.total) || 0), 0)
+  const totalConEstado = aceptadas.length + pendientes.length + rechazadas.length
+  const tasaAceptacion = respondidas ? Math.round((aceptadas.length / respondidas) * 100) : 0
+  const pctRechazo = totalConEstado ? ((rechazadas.length / totalConEstado) * 100).toFixed(1) : '0'
+
+  // Gráfica: aceptadas por mes (últimos 6 meses)
+  const ahora = new Date()
+  const buckets = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - (5 - i), 1)
+    return { key: `${d.getFullYear()}-${d.getMonth()}`, label: MESES[d.getMonth()], value: 0 }
+  })
+  aceptadas.forEach(c => {
+    const d = new Date(c.created_at)
+    const b = buckets.find(x => x.key === `${d.getFullYear()}-${d.getMonth()}`)
+    if (b) b.value += 1
+  })
+  const hayDatosGrafica = buckets.some(b => b.value > 0)
+
+  const kpis = [
+    { label: 'Aceptadas', value: aceptadas.length, icon: CheckCircle2, color: 'text-success-600', bg: 'bg-success-50', sub: `${tasaAceptacion}% de aceptación` },
+    { label: 'Pendientes', value: pendientes.length, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', sub: 'Requieren seguimiento' },
+    { label: 'Rechazadas', value: rechazadas.length, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', sub: `${pctRechazo}% del total` },
+    { label: 'Valor aceptado', value: formatCurrency(valorAceptado), icon: DollarSign, color: 'text-primary-600', bg: 'bg-primary-50', sub: 'Cotizaciones ganadas' },
+  ]
+
+  const canales = [
+    { icon: Download, title: 'Descargar PDF', desc: 'Documento listo para enviar' },
+    { icon: MessageCircle, title: 'Enviar por WhatsApp', desc: 'Usa tu número conectado' },
+    { icon: Link2, title: 'Copiar enlace público', desc: 'Con aceptar o rechazar' },
+    { icon: Mail, title: 'Enviar por email', desc: 'Usa tu plantilla activa' },
   ]
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Encabezado */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">
-            Buenos días, {profile?.nombre?.split(' ')[0] ?? 'bienvenido'} 👋
-          </h1>
-          <p className="text-slate-500 text-sm mt-0.5">Aquí tienes un resumen de tu actividad</p>
+          <h1 className="text-2xl font-bold text-navy-900">Rendimiento de cotizaciones</h1>
+          <p className="text-slate-500 text-sm mt-0.5">Analiza respuestas y da seguimiento a cada oportunidad.</p>
         </div>
-        <Link to="/app/cotizaciones/nueva" className="btn-primary">
-          <Plus className="w-4 h-4" />
-          Nueva cotización
-        </Link>
+        <Link to="/app/cotizaciones/nueva" className="btn-navy"><Plus className="w-4 h-4" /> Nueva cotización</Link>
       </div>
 
-      {/* Stats */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map(s => (
-          <div key={s.label} className="card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center`}>
-                <s.icon className={`w-4 h-4 ${s.color}`} />
-              </div>
+        {kpis.map(k => (
+          <div key={k.label} className="card p-5">
+            <div className={`w-9 h-9 rounded-lg ${k.bg} flex items-center justify-center mb-3`}>
+              <k.icon className={`w-4 h-4 ${k.color}`} />
             </div>
-            <p className="text-2xl font-bold text-slate-800">{loading ? '—' : s.value.toLocaleString()}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
+            <p className="text-2xl font-extrabold text-navy-900">{loading ? '—' : k.value}</p>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">{k.label}</p>
+            <p className="text-[11px] text-slate-400 mt-1">{k.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Chart + recientes */}
+      {/* Gráfica + anillo */}
       <div className="grid lg:grid-cols-3 gap-4">
-        <div className="card p-5 lg:col-span-2">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">Cotizaciones por semana</h2>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1e7363" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#1e7363" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Area type="monotone" dataKey="total" stroke="#1e7363" fill="url(#grad)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="card p-6 lg:col-span-2">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-semibold text-navy-900">Aceptación de cotizaciones</h2>
+            <span className="text-xs text-slate-400">Últimos 6 meses</span>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">Comportamiento de cotizaciones aceptadas</p>
+          {hayDatosGrafica ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={buckets} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={38}>
+                  {buckets.map((_, i) => <Cell key={i} fill={i === buckets.length - 1 ? '#08AEB6' : '#c3f1f2'} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyChart />
+          )}
         </div>
 
-        <div className="card p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">Últimas cotizaciones</h2>
-          {recientes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <FileText className="w-8 h-8 text-slate-300 mb-2" />
-              <p className="text-sm text-slate-500">Sin cotizaciones aún</p>
-              <Link to="/app/cotizaciones/nueva" className="text-xs text-primary-600 mt-1 hover:underline">Crear primera cotización</Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recientes.map((c, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-700">{formatCurrency(c.total)}</p>
-                    <p className="text-xs text-slate-400 capitalize">{c.estado}</p>
-                  </div>
-                  <span className={`badge text-xs ${
-                    c.estado === 'aceptada' ? 'bg-green-100 text-green-700' :
-                    c.estado === 'enviada' ? 'bg-blue-100 text-blue-700' :
-                    'bg-slate-100 text-slate-600'
-                  }`}>{c.estado}</span>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="card p-6">
+          <h2 className="font-semibold text-navy-900">Estado de respuestas</h2>
+          <p className="text-xs text-slate-400 mb-4">{totalConEstado} cotizaciones registradas</p>
+          <div className="flex justify-center my-4">
+            <Ring pct={tasaAceptacion} />
+          </div>
+          <div className="space-y-2">
+            {[
+              ['Aceptadas', aceptadas.length, 'bg-success-500'],
+              ['Pendientes', pendientes.length, 'bg-amber-400'],
+              ['Rechazadas', rechazadas.length, 'bg-red-400'],
+            ].map(([l, v, c]) => (
+              <div key={l as string} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-slate-600"><span className={`w-2.5 h-2.5 rounded-full ${c}`} /> {l}</span>
+                <span className="font-semibold text-navy-900">{v as number}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Folios warning */}
-      {(profile?.folios_balance ?? 0) <= 5 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Zap className="w-5 h-5 text-amber-500 flex-shrink-0" />
+      {/* Recientes + canales */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <div className="card overflow-hidden lg:col-span-2">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <div>
-              <p className="text-sm font-semibold text-amber-800">
-                {profile?.folios_balance === 0 ? 'Sin folios disponibles' : `Solo te quedan ${profile?.folios_balance} folios`}
-              </p>
-              <p className="text-xs text-amber-600 mt-0.5">Recarga para seguir enviando cotizaciones</p>
+              <h2 className="font-semibold text-navy-900">Cotizaciones recientes</h2>
+              <p className="text-xs text-slate-400">Consulta, comparte y administra tus documentos</p>
             </div>
+            <Link to="/app/cotizaciones" className="text-xs font-medium text-primary-600 hover:underline">Ver todas →</Link>
           </div>
-          <Link to="/app/folios" className="btn-primary text-xs px-3 py-1.5 bg-amber-500 hover:bg-amber-600">
-            Recargar ahora
-          </Link>
+          {cotis.length === 0 ? (
+            <div className="py-14 text-center">
+              <FileText className="w-9 h-9 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">Aún no tienes cotizaciones</p>
+              <Link to="/app/cotizaciones/nueva" className="text-xs text-primary-600 mt-1 inline-block hover:underline">Crear la primera →</Link>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 bg-slate-50/60">
+                  <th className="px-6 py-2.5 font-medium">Folio</th>
+                  <th className="px-4 py-2.5 font-medium">Cliente</th>
+                  <th className="px-4 py-2.5 font-medium">Total</th>
+                  <th className="px-4 py-2.5 font-medium">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {cotis.slice(0, 5).map(c => (
+                  <tr key={c.id} className="hover:bg-slate-50">
+                    <td className="px-6 py-3 font-mono text-xs text-slate-500">{c.numero}</td>
+                    <td className="px-4 py-3 text-slate-700">{c.cliente_nombre || '—'}</td>
+                    <td className="px-4 py-3 font-semibold text-navy-900">{formatCurrency(c.total)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`badge ${ESTADO_BADGE[c.estado] ?? 'bg-slate-100 text-slate-500'}`}>{ESTADO_LABEL[c.estado] ?? c.estado}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-      )}
+
+        <div className="card p-6">
+          <h2 className="font-semibold text-navy-900">Enviar cotización</h2>
+          <p className="text-xs text-slate-400 mb-4">Selecciona el canal para compartir</p>
+          <div className="space-y-2">
+            {canales.map(c => (
+              <div key={c.title} className="flex items-center gap-3 rounded-xl border border-slate-100 px-3 py-2.5 hover:border-primary-200 hover:bg-primary-50/40 transition-colors cursor-pointer">
+                <span className="w-9 h-9 rounded-lg bg-fondo flex items-center justify-center text-navy-700"><c.icon className="w-4 h-4" /></span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-navy-900">{c.title}</p>
+                  <p className="text-[11px] text-slate-400">{c.desc}</p>
+                </div>
+                <span className="text-slate-300">›</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Anillo de porcentaje (SVG puro)
+function Ring({ pct }: { pct: number }) {
+  const r = 42, c = 2 * Math.PI * r
+  const off = c - (pct / 100) * c
+  return (
+    <div className="relative w-32 h-32">
+      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+        <circle cx="50" cy="50" r={r} fill="none" stroke="#f1f5f9" strokeWidth="10" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke="#08AEB6" strokeWidth="10" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={off} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-extrabold text-navy-900">{pct}%</span>
+        <span className="text-[10px] text-slate-400">aceptación</span>
+      </div>
+    </div>
+  )
+}
+
+function EmptyChart() {
+  return (
+    <div className="h-[200px] flex flex-col items-center justify-center text-center">
+      <div className="flex items-end gap-1.5 opacity-40">
+        {[30, 50, 35, 60, 45, 70].map((h, i) => (
+          <span key={i} className="w-6 rounded-t bg-slate-200" style={{ height: h }} />
+        ))}
+      </div>
+      <p className="text-sm text-slate-400 mt-4">Aquí verás tus cotizaciones aceptadas por mes</p>
     </div>
   )
 }
