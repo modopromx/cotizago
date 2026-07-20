@@ -49,7 +49,7 @@ export default function AppLayout() {
     <div className="flex flex-col h-full">
       {/* Logo (blanco sobre fondo oscuro) */}
       <div className="px-2 pt-1 pb-6">
-        <Logo variant="white" />
+        <Logo variant="white" className="h-9" />
       </div>
 
       {/* Datos del usuario */}
