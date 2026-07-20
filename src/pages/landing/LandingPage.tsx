@@ -233,9 +233,13 @@ function AppComingSoon() {
         <p className="mt-4 text-xs text-slate-400">Mientras tanto, puedes instalar Cotiza Go como PWA desde tu navegador.</p>
       </div>
       <div className="relative flex justify-center py-10">
+        {/* Anillos concéntricos ("ondas") detrás del teléfono */}
+        <span className="orbit-ring pulse-1 w-[300px] h-[300px] hidden sm:block" />
+        <span className="orbit-ring pulse-2 w-[400px] h-[400px] hidden sm:block" />
+        <span className="orbit-ring pulse-3 w-[500px] h-[500px] hidden sm:block" />
         {/* Teléfono — réplica exacta del diseño original: 218x430, borde 7px,
             inclinado 3° con animación de flotación, tarjeta de folios en degradado. */}
-        <div className="relative w-[218px] h-[430px] rounded-[34px] border-[7px] border-navy-900 pt-[30px] px-[15px] pb-[50px] animate-phone-float"
+        <div className="relative z-10 w-[218px] h-[430px] rounded-[34px] border-[7px] border-navy-900 pt-[30px] px-[15px] pb-[50px] animate-phone-float"
              style={{ background: '#f7fafb', boxShadow: '0 35px 65px rgba(5,38,61,0.25)' }}>
           {/* notch */}
           <span className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-2 rounded-[10px] bg-navy-900" />
@@ -264,11 +268,11 @@ function AppComingSoon() {
           </div>
         </div>
         {/* chips flotantes de tiendas */}
-        <span className="absolute left-2 top-8 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
+        <span className="absolute left-2 top-8 z-20 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
           <span className="block text-sm font-bold text-navy-900">iOS</span>
           <span className="block text-[10px] text-slate-400">Próximamente</span>
         </span>
-        <span className="absolute right-2 bottom-16 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
+        <span className="absolute right-2 bottom-16 z-20 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
           <span className="block text-sm font-bold text-navy-900">Android</span>
           <span className="block text-[10px] text-slate-400">Próximamente</span>
         </span>
