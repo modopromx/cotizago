@@ -232,31 +232,36 @@ function AppComingSoon() {
         </div>
         <p className="mt-4 text-xs text-slate-400">Mientras tanto, puedes instalar Cotiza Go como PWA desde tu navegador.</p>
       </div>
-      <div className="relative flex justify-center">
+      <div className="relative flex justify-center py-6">
         <div className="absolute inset-0 bg-primary-100/40 blur-3xl rounded-full -z-10" />
-        <div className="w-56 rounded-[2rem] border-8 border-navy-900 bg-white shadow-card-hover overflow-hidden">
-          <div className="bg-navy-900 h-6" />
-          <div className="p-4">
-            <Logo className="scale-90 origin-left" />
-            <div className="mt-4 rounded-xl bg-fondo p-3">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Buen día</p>
-              <p className="text-sm font-bold text-navy-900">Hola, Alan 👋</p>
-              <div className="mt-3 bg-white rounded-lg p-3 border border-slate-100">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Folios disponibles</p>
-                <p className="text-2xl font-extrabold text-primary-600">43</p>
-                <p className="text-[10px] text-slate-400">7 de 50 utilizados</p>
-              </div>
-              <button className="mt-3 w-full text-xs font-semibold text-white bg-navy-900 rounded-lg py-2">+ Nueva cotización</button>
-            </div>
+        {/* Teléfono — medidas tomadas del diseño original (218x430, borde 7px navy) */}
+        <div className="w-[218px] rounded-[34px] border-[7px] border-navy-900 bg-fondo px-4 pt-7 pb-6 flex flex-col items-center"
+             style={{ boxShadow: '0 35px 65px rgba(5,38,61,0.25)' }}>
+          <span className="w-16 h-2 rounded-full bg-navy-900 mb-5" />
+          <Logo className="scale-90" />
+          <div className="mt-5 w-full text-left">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Buen día</p>
+            <p className="text-sm font-bold text-navy-900">Hola, Alan 👋</p>
+          </div>
+          <div className="mt-3 w-full rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider">Folios disponibles</p>
+            <p className="text-3xl font-extrabold text-primary-600 leading-tight">43</p>
+            <p className="text-[10px] text-slate-400">7 de 50 utilizados</p>
+          </div>
+          <div className="mt-3 w-full rounded-xl bg-white border border-slate-200 shadow-sm py-3 text-center text-sm font-semibold text-navy-900">
+            ＋ Nueva cotización
+          </div>
+          <div className="mt-3 w-full rounded-xl bg-white border border-slate-100 py-2.5 flex items-center justify-around text-slate-400">
+            <Home className="w-4 h-4 text-primary-500" /><FileText className="w-4 h-4" /><Users className="w-4 h-4" /><Settings className="w-4 h-4" />
           </div>
         </div>
         {/* chips flotantes de tiendas */}
-        <span className="absolute left-0 top-10 bg-white rounded-xl shadow-card-hover border border-slate-100 px-3 py-2 text-center hidden sm:block">
-          <span className="block text-xs font-bold text-navy-900">iOS</span>
+        <span className="absolute left-0 top-16 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
+          <span className="block text-sm font-bold text-navy-900">iOS</span>
           <span className="block text-[10px] text-slate-400">Próximamente</span>
         </span>
-        <span className="absolute right-0 bottom-12 bg-white rounded-xl shadow-card-hover border border-slate-100 px-3 py-2 text-center hidden sm:block">
-          <span className="block text-xs font-bold text-navy-900">Android</span>
+        <span className="absolute right-0 bottom-20 bg-white rounded-xl shadow-card-hover border border-slate-100 px-4 py-2.5 text-center hidden sm:block">
+          <span className="block text-sm font-bold text-navy-900">Android</span>
           <span className="block text-[10px] text-slate-400">Próximamente</span>
         </span>
       </div>
@@ -266,21 +271,35 @@ function AppComingSoon() {
 
 function StoreBadge({ store, icon }: { store: string; icon: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-3 bg-navy-900 text-white rounded-xl px-5 py-2.5 opacity-90 cursor-default select-none">
+    <span className="inline-flex items-center gap-3 bg-navy-900 text-white rounded-xl px-5 py-2.5 cursor-default select-none hover:bg-navy-800 transition-colors">
       {icon}
       <span className="text-left leading-tight">
         <span className="block text-[10px] text-slate-300">Próximamente en</span>
-        <span className="block text-sm font-semibold">{store}</span>
+        <span className="block text-base font-semibold -mt-0.5">{store}</span>
       </span>
     </span>
   )
 }
 
+// Logo oficial de Apple (silueta monocromática blanca)
 function AppleIcon() {
-  return <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor"><path d="M16.365 1.43c0 1.14-.416 2.2-1.11 2.99-.75.86-1.98 1.53-3.12 1.44-.14-1.12.42-2.28 1.09-3.02.75-.85 2.06-1.5 3.14-1.41zM20.5 17.02c-.6 1.4-.9 2.02-1.68 3.26-1.08 1.74-2.6 3.9-4.49 3.92-1.67.01-2.1-1.1-4.37-1.08-2.27.01-2.74 1.1-4.42 1.09-1.89-.02-3.33-1.97-4.41-3.7C-.7 16.2-1.02 10.9 1.28 8.06c1.15-1.44 2.96-2.35 4.63-2.35 1.7 0 2.77 1.1 4.18 1.1 1.36 0 2.19-1.1 4.16-1.1 1.48 0 3.05.81 4.17 2.2-3.66 2-3.07 7.22.08 9.11z"/></svg>
+  return (
+    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="currentColor" aria-hidden="true">
+      <path d="M17.05 12.53c-.02-2.02 1.65-2.99 1.73-3.04-.94-1.38-2.4-1.57-2.92-1.59-1.24-.13-2.42.73-3.05.73-.63 0-1.6-.71-2.63-.69-1.35.02-2.6.79-3.3 2-1.41 2.44-.36 6.05 1.01 8.03.67.97 1.47 2.06 2.52 2.02 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.63.63 1.09-.02 1.78-.99 2.44-1.96.77-1.12 1.09-2.21 1.11-2.27-.02-.01-2.13-.82-2.15-3.24zM15.09 6.6c.56-.68.94-1.62.83-2.56-.81.03-1.79.54-2.37 1.22-.52.6-.97 1.56-.85 2.48.9.07 1.83-.46 2.39-1.14z"/>
+    </svg>
+  )
 }
+
+// Logo oficial de Google Play (triángulo a 4 colores)
 function PlayStoreIcon() {
-  return <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M3.6 2.3c-.3.3-.5.7-.5 1.2v17c0 .5.2.9.5 1.2l.1.1L13 12.6v-.2L3.7 2.2l-.1.1zm11 8.3l-2.5 2.5L4 21.9c.4.2.9.2 1.4-.1l9.2-5.2-1-1-.9-1zm3.2-3.6l-2.5 1.4-2.7 2.7 2.7 2.7 2.5 1.4c.9-.5.9-1.9 0-2.4l.3-3.4-.3-2z"/></svg>
+  return (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden="true">
+      <path fill="#00D26E" d="M4 3 4 12 13.2 12z" />
+      <path fill="#00A0FF" d="M4 12 4 21 13.2 12z" />
+      <path fill="#FFCE00" d="M4 3 13.2 12 20.4 12z" />
+      <path fill="#FF3B30" d="M4 21 13.2 12 20.4 12z" />
+    </svg>
+  )
 }
 
 function Features() {
