@@ -85,8 +85,10 @@ export default function NuevaCotizacionPage() {
       descuento_monto: descMonto,
       impuestos,
       total,
-      estado,
-      folio_consumido: estado === 'enviada',
+      // Siempre se inserta como borrador; el envío (y el consumo de folio) lo
+      // hace la función enviar_cotizacion en el servidor, de forma atómica.
+      estado: 'borrador',
+      folio_consumido: false,
       cliente_nombre: cliente?.nombre ?? '',
       cliente_empresa: cliente?.empresa ?? '',
       cliente_email: cliente?.email ?? '',
@@ -104,9 +106,16 @@ export default function NuevaCotizacionPage() {
       items.map((it, idx) => ({ cotizacion_id: cot.id, ...it, orden: idx }))
     )
 
-    // Descontar folio si enviada
+    // Enviar: consume un folio de forma atómica en el servidor (RPC).
     if (estado === 'enviada') {
-      await supabase.from('profiles').update({ folios_balance: (profile!.folios_balance - 1) }).eq('id', user.id)
+      const { error: envError } = await supabase.rpc('enviar_cotizacion', { cotizacion_uuid: cot.id })
+      if (envError) {
+        toast.error(envError.message.includes('folios') ? 'No tienes folios disponibles.' : 'No se pudo enviar: ' + envError.message)
+        // La cotización queda guardada como borrador; el usuario puede reintentar.
+        navigate('/app/cotizaciones')
+        setSaving(false)
+        return
+      }
       await refreshProfile()
     }
 

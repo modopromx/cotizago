@@ -15,28 +15,16 @@ export default function CotizacionPublicaPage() {
   useEffect(() => {
     if (!token) return
     const load = async () => {
-      const { data: cotData } = await supabase.from('cotizaciones').select('*').eq('token', token).single()
-      if (!cotData) { setLoading(false); return }
-      setCot(cotData)
+      // Acceso público seguro: la función exige el token y solo devuelve los
+      // campos publicables del emisor (nunca datos privados ni otras cotizaciones).
+      const { data } = await supabase.rpc('get_cotizacion_publica', { cotizacion_token: token })
+      if (!data) { setLoading(false); return }
+      setCot(data.cotizacion)
+      setItems(data.items ?? [])
+      setProfile(data.emisor)
 
-      const [{ data: itemsData }, { data: profData }] = await Promise.all([
-        supabase.from('cotizacion_items').select('*').eq('cotizacion_id', cotData.id).order('orden'),
-        supabase.from('profiles').select('nombre,empresa,telefono,email,email_empresa,banco,titular,clabe,link_pago,logo_url,color_marca').eq('id', cotData.user_id).single(),
-      ])
-      setItems(itemsData ?? [])
-      setProfile(profData)
-
-      // Registrar vista
-      await supabase.from('quote_views').insert({ cotizacion_id: cotData.id, ip: '', user_agent: navigator.userAgent })
-      if (cotData.estado === 'enviada') {
-        await supabase.from('cotizaciones').update({
-          estado: 'vista',
-          visto_at: new Date().toISOString(),
-          visto_count: (cotData.visto_count ?? 0) + 1
-        }).eq('id', cotData.id)
-      } else {
-        await supabase.from('cotizaciones').update({ visto_count: (cotData.visto_count ?? 0) + 1 }).eq('id', cotData.id)
-      }
+      // Registrar la apertura (marca "vista" y suma el contador en el servidor).
+      supabase.rpc('registrar_vista', { cotizacion_token: token, ua: navigator.userAgent })
 
       setLoading(false)
     }
@@ -44,8 +32,8 @@ export default function CotizacionPublicaPage() {
   }, [token])
 
   const handleRespuesta = async (resp: 'aceptada' | 'rechazada') => {
-    if (!cot) return
-    await supabase.from('cotizaciones').update({ estado: resp, respuesta: resp }).eq('id', cot.id)
+    if (!cot || !token) return
+    await supabase.rpc('responder_cotizacion', { cotizacion_token: token, respuesta_cliente: resp })
     setRespondida(true)
     setCot((c: any) => ({ ...c, estado: resp }))
   }
