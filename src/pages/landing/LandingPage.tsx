@@ -190,11 +190,11 @@ function HeroMockup() {
 }
 
 function Marquee() {
-  // Una "tira" con la etiqueta + los items; se repite 4 veces dentro de un track
-  // del doble de ancho. Al desplazar el track -50% en loop, el corte es invisible.
+  // La cinta solo desplaza los rubros; el título "IDEAL PARA" queda fijo encima.
+  // Se repite la tira dentro de un track del doble de ancho: al recorrer -50%
+  // en loop, el corte es invisible.
   const Tira = () => (
     <>
-      <span className="mx-8 text-xs font-semibold tracking-widest text-slate-400 uppercase shrink-0">Ideal para</span>
       {IDEAL_PARA.map((t, i) => (
         <span key={t + i} className="mx-6 inline-flex items-center gap-2 text-sm font-medium text-navy-700 shrink-0">
           <span className="text-primary-400">✦</span> {t}
@@ -203,11 +203,14 @@ function Marquee() {
     </>
   )
   return (
-    <div className="border-y border-slate-100 bg-white overflow-hidden py-4 marquee-mask">
-      <div className="flex w-max animate-marquee whitespace-nowrap">
-        {/* dos mitades idénticas: el track mide 200%, la animación recorre -50% */}
-        <div className="flex items-center shrink-0"><Tira /><Tira /></div>
-        <div className="flex items-center shrink-0" aria-hidden="true"><Tira /><Tira /></div>
+    <div className="border-y border-slate-100 bg-white py-6">
+      <p className="text-center text-xs font-semibold tracking-widest text-slate-400 uppercase mb-4">Ideal para</p>
+      <div className="overflow-hidden marquee-mask">
+        <div className="flex w-max animate-marquee whitespace-nowrap">
+          {/* dos mitades idénticas: el track mide 200%, la animación recorre -50% */}
+          <div className="flex items-center shrink-0"><Tira /><Tira /><Tira /></div>
+          <div className="flex items-center shrink-0" aria-hidden="true"><Tira /><Tira /><Tira /></div>
+        </div>
       </div>
     </div>
   )
