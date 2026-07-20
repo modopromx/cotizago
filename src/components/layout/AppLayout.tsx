@@ -1,145 +1,132 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import Logo from '../Logo'
 import {
-  FileText, LayoutDashboard, Users, Package, Layers, CreditCard,
-  Settings, HelpCircle, LogOut, Menu, X, ChevronDown, Bell, Zap
+  LayoutDashboard, FileText, Users, Package, Coins, Blocks,
+  Mail, Building2, LogOut, Menu, X, Plus,
 } from 'lucide-react'
 import clsx from 'clsx'
 
+// Menú del panel según el diseño de referencia.
 const navItems = [
-  { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/app', label: 'Resumen', icon: LayoutDashboard, end: true },
   { to: '/app/cotizaciones', label: 'Cotizaciones', icon: FileText },
   { to: '/app/clientes', label: 'Clientes', icon: Users },
   { to: '/app/productos', label: 'Productos', icon: Package },
-  { to: '/app/plantillas', label: 'Plantillas', icon: Layers },
-  { to: '/app/folios', label: 'Folios', icon: CreditCard },
-  { to: '/app/configuracion', label: 'Configuración', icon: Settings },
-  { to: '/app/soporte', label: 'Soporte', icon: HelpCircle },
+  { to: '/app/folios', label: 'Comprar folios', icon: Coins },
+  { to: '/app/modulos', label: 'Módulos', icon: Blocks },
+  { to: '/app/plantillas', label: 'Plantillas', icon: Mail },
+  { to: '/app/configuracion', label: 'Mi empresa', icon: Building2 },
 ]
 
+// clases del item de navegación (activo = turquesa + barra de acento + degradado)
+const linkClasses = ({ isActive }: { isActive: boolean }) => clsx(
+  'flex items-center gap-3 px-3.5 py-3 rounded-[11px] text-[13px] font-medium transition-all',
+  isActive
+    ? 'text-[#42E0CE] font-bold bg-gradient-to-r from-[#123357] to-[#173961] shadow-[inset_3px_0_0_#21C8BA]'
+    : 'text-[#AEBED0] hover:text-white hover:bg-[#102743] hover:translate-x-0.5'
+)
+
 export default function AppLayout() {
-  const { profile, signOut, isAdminUser } = useAuth()
+  const { profile, signOut } = useAuth()
   const navigate = useNavigate()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const location = useLocation()
+  const [open, setOpen] = useState(false)
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
   }
 
-  const SidebarContent = () => (
+  const currentLabel = navItems.find(i =>
+    i.end ? location.pathname === i.to : location.pathname.startsWith(i.to)
+  )?.label ?? 'Panel'
+
+  const inicial = (profile?.nombre ?? profile?.email ?? 'U')[0].toUpperCase()
+
+  const Sidebar = () => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-4 py-5 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
-          <img src="/logo-icon.svg" width={30} height={35} alt="CotizaGo" />
-          <span className="font-extrabold text-slate-800 text-lg tracking-tight">CotizaGo</span>
-        </div>
+      {/* Logo (blanco sobre fondo oscuro) */}
+      <div className="px-2 pt-1 pb-6">
+        <Logo variant="white" />
       </div>
 
-      {/* Folios badge */}
-      <div className="px-4 py-3 border-b border-slate-100">
-        <div className="flex items-center justify-between bg-primary-50 rounded-lg px-3 py-2">
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-primary-600" />
-            <span className="text-xs font-medium text-primary-700">Folios disponibles</span>
-          </div>
-          <span className="text-sm font-bold text-primary-700">{profile?.folios_balance ?? 0}</span>
-        </div>
+      {/* Datos del usuario */}
+      <div className="px-3 pb-4 mb-2 border-b border-[#20304A]">
+        <p className="text-sm font-bold text-white">{profile?.nombre ?? 'Mi cuenta'}</p>
+        <p className="text-[11px] text-[#3FD4C7] mt-0.5">
+          Plan {(profile?.plan ?? 'gratis')[0].toUpperCase() + (profile?.plan ?? 'gratis').slice(1)} · {profile?.folios_balance ?? 0} folios
+        </p>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      {/* Navegación */}
+      <nav className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
         {navItems.map(item => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={() => setSidebarOpen(false)}
-            className={({ isActive }) => clsx(
-              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              isActive
-                ? 'bg-primary-50 text-primary-700'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
-            )}
-          >
-            <item.icon className="w-4 h-4 flex-shrink-0" />
+          <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setOpen(false)} className={linkClasses}>
+            <item.icon className="w-[18px] h-[18px] shrink-0" />
             {item.label}
           </NavLink>
         ))}
       </nav>
 
-      {/* User + logout */}
-      <div className="p-3 border-t border-slate-100">
-        {isAdminUser && (
-          <button
-            onClick={() => navigate('/admin')}
-            className="w-full flex items-center gap-2 px-3 py-2 mb-1 rounded-lg text-xs font-medium text-navy-700 bg-navy-50 hover:bg-navy-100 transition-colors"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            Panel Admin
-          </button>
-        )}
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold text-primary-700">
-              {(profile?.nombre ?? profile?.email ?? 'U')[0].toUpperCase()}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-slate-800 truncate">{profile?.nombre ?? 'Usuario'}</p>
-            <p className="text-xs text-slate-500 truncate">{profile?.empresa ?? profile?.email}</p>
-          </div>
-          <button onClick={handleSignOut} className="text-slate-400 hover:text-red-500 transition-colors">
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
+      {/* Salir */}
+      <div className="pt-3 mt-2 border-t border-[#20304A]">
+        <button onClick={handleSignOut}
+          className="w-full flex items-center gap-3 px-3.5 py-3 rounded-[11px] text-[13px] font-medium text-[#AEBED0] hover:text-white hover:bg-[#102743] transition-colors">
+          <LogOut className="w-[18px] h-[18px]" /> Salir
+        </button>
       </div>
     </div>
   )
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-fondo">
       {/* Sidebar desktop */}
-      <aside className="hidden lg:flex flex-col w-60 bg-white border-r border-slate-200 flex-shrink-0">
-        <SidebarContent />
+      <aside className="hidden lg:flex flex-col w-[276px] shrink-0 bg-navy-950 border-r border-[#20304A] px-4 py-6">
+        <Sidebar />
       </aside>
 
-      {/* Sidebar mobile overlay */}
-      {sidebarOpen && (
+      {/* Sidebar móvil */}
+      {open && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="fixed inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative w-60 bg-white shadow-xl z-10">
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
-            >
+          <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)} />
+          <aside className="relative w-[276px] bg-navy-950 border-r border-[#20304A] px-4 py-6 z-10">
+            <button onClick={() => setOpen(false)} className="absolute top-5 right-4 text-[#AEBED0] hover:text-white">
               <X className="w-5 h-5" />
             </button>
-            <SidebarContent />
+            <Sidebar />
           </aside>
         </div>
       )}
 
-      {/* Main */}
+      {/* Área principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile topbar */}
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
-          <button onClick={() => setSidebarOpen(true)} className="text-slate-600">
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-primary-600 rounded flex items-center justify-center">
-              <FileText className="w-3.5 h-3.5 text-white" />
+        {/* Header */}
+        <header className="flex items-center justify-between gap-4 px-4 lg:px-8 h-16 bg-white border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setOpen(true)} className="lg:hidden text-navy-700"><Menu className="w-5 h-5" /></button>
+            <div>
+              <p className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase leading-none">Mi cuenta</p>
+              <p className="text-sm font-bold text-navy-900 mt-0.5">{currentLabel}</p>
             </div>
-            <span className="font-bold text-slate-800">CotizaGo</span>
           </div>
-          <div className="w-5" />
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/app/cotizaciones/nueva')} className="hidden sm:inline-flex btn-navy text-xs">
+              <Plus className="w-4 h-4" /> Nueva cotización
+            </button>
+            <div className="flex items-center gap-2.5">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-semibold text-navy-900 leading-none">{profile?.nombre ?? 'Usuario'}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Plan {(profile?.plan ?? 'gratis')}</p>
+              </div>
+              <span className="w-9 h-9 rounded-full bg-navy-900 text-white text-xs font-bold flex items-center justify-center">{inicial}</span>
+            </div>
+          </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        {/* Contenido */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
           <Outlet />
         </main>
       </div>

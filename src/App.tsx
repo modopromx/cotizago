@@ -17,6 +17,7 @@ import NuevaCotizacionPage from './pages/app/NuevaCotizacionPage'
 import EditarCotizacionPage from './pages/app/EditarCotizacionPage'
 import ClientesPage from './pages/app/ClientesPage'
 import ProductosPage from './pages/app/ProductosPage'
+import ModulosPage from './pages/app/ModulosPage'
 import PlantillasPage from './pages/app/PlantillasPage'
 import FoliosPage from './pages/app/FoliosPage'
 import ConfiguracionPage from './pages/app/ConfiguracionPage'
@@ -86,6 +87,7 @@ function AppRoutes() {
         <Route path="cotizaciones/:id/editar" element={<EditarCotizacionPage />} />
         <Route path="clientes" element={<ClientesPage />} />
         <Route path="productos" element={<ProductosPage />} />
+        <Route path="modulos" element={<ModulosPage />} />
         <Route path="plantillas" element={<PlantillasPage />} />
         <Route path="folios" element={<FoliosPage />} />
         <Route path="configuracion" element={<ConfiguracionPage />} />
