@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency } from '../../lib/utils'
+import CampoTelefono from '../../components/CampoTelefono'
 import toast from 'react-hot-toast'
 import { MessageCircle, Mail, CreditCard, Code2, Blocks, Settings, Save, X, ExternalLink } from 'lucide-react'
 
@@ -147,7 +148,8 @@ export default function ModulosPage() {
                       <option value="cloud">Meta Cloud API (envío automático)</option>
                     </select>
                   </div>
-                  <div><label className="label">Tu número de WhatsApp</label><input className="input" placeholder="52 55 1234 5678" value={form.numero ?? ''} onChange={e => setForm({ ...form, numero: e.target.value })} /></div>
+                  <CampoTelefono label="Tu número de WhatsApp" value={form.numero}
+                    onChange={v => setForm({ ...form, numero: v })} />
                   {form.metodo === 'cloud' && (
                     <>
                       <div><label className="label">Phone Number ID</label><input className="input" value={form.phone_id ?? ''} onChange={e => setForm({ ...form, phone_id: e.target.value })} /></div>

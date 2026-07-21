@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency } from '../../lib/utils'
+import CampoTelefono from '../../components/CampoTelefono'
 import toast from 'react-hot-toast'
 import { Plus, Search, Edit2, Trash2, Users, X, UserPlus } from 'lucide-react'
 
@@ -182,7 +183,11 @@ export default function ClientesPage() {
                 <div className="col-span-2"><label className="label">Razón social</label><input className="input" value={form.razon_social} onChange={set('razon_social')} /></div>
                 <div className="col-span-2"><label className="label">Correo</label><input type="email" className="input" value={form.email} onChange={set('email')} /></div>
                 <div><label className="label">Teléfono</label><input className="input" value={form.telefono} onChange={set('telefono')} /></div>
-                <div><label className="label">WhatsApp</label><input className="input" value={form.whatsapp} onChange={set('whatsapp')} /></div>
+                <div className="col-span-2">
+                  <CampoTelefono label="WhatsApp (para enviarle la cotización)" value={form.whatsapp}
+                    onChange={v => setForm(f => ({ ...f, whatsapp: v }))}
+                    paisDefault={form.pais || 'MX'} />
+                </div>
                 <div><label className="label">País</label>
                   <select className="input" value={form.pais} onChange={set('pais')}>
                     <option value="MX">México</option><option value="CO">Colombia</option><option value="AR">Argentina</option><option value="CL">Chile</option><option value="PE">Perú</option><option value="US">Estados Unidos</option>

@@ -80,7 +80,8 @@ export default function CotizacionesPage() {
       total: formatCurrency(c.total, c.moneda), empresa: profile?.empresa ?? profile?.nombre ?? '',
       enlace_publico: enlace, vendedor: profile?.nombre ?? '',
     })
-    abrirWhatsApp(msg, c.cliente_whatsapp)
+    const { conDestino } = abrirWhatsApp(msg, c.cliente_whatsapp)
+    if (!conDestino) toast('Este cliente no tiene WhatsApp con código de país; elige el contacto en WhatsApp.', { icon: '📱', duration: 5000 })
   }
   const handleEmail = async (c: any) => {
     const t = toast.loading('Enviando correo...')
