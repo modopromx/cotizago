@@ -10,6 +10,12 @@ const cors = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+// Lee un secreto de la bóveda plataforma_secretos; si no está, cae al env.
+async function getSecret(admin: any, clave: string, envName: string) {
+  const { data } = await admin.from('plataforma_secretos').select('valor').eq('clave', clave).maybeSingle()
+  return (data && data.valor) || Deno.env.get(envName) || ''
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
@@ -26,8 +32,11 @@ Deno.serve(async (req) => {
 
     const { data: prof } = await supabase.from('profiles').select('workspace_id').eq('id', user.id).single()
 
-    // Registro de pago pendiente (service role: la tabla no permite insert al usuario)
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+    const secretKey = await getSecret(admin, 'stripe_secret_key', 'STRIPE_SECRET_KEY')
+    if (!secretKey) return json({ error: 'Stripe no configurado por el administrador' }, 400)
+
+    // Registro de pago pendiente (service role: la tabla no permite insert al usuario)
     const { data: pago, error: pagoErr } = await admin.from('pagos').insert({
       user_id: user.id, workspace_id: prof?.workspace_id ?? null,
       monto: precio, moneda: 'MXN', folios_cantidad: folios, paquete_nombre,
@@ -36,7 +45,7 @@ Deno.serve(async (req) => {
     if (pagoErr || !pago) return json({ error: 'No se pudo registrar el pago' }, 500)
 
     const origin = req.headers.get('origin') ?? 'http://localhost:5173'
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, { apiVersion: '2024-06-20' })
+    const stripe = new Stripe(secretKey, { apiVersion: '2024-06-20' })
     const session = await stripe.checkout.sessions.create({
       ui_mode: 'embedded',
       mode: 'payment',
