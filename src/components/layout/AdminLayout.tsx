@@ -40,7 +40,8 @@ export default function AdminLayout() {
   const currentLabel = adminNav.find(i => i.end ? location.pathname === i.to : location.pathname.startsWith(i.to))?.label ?? 'Superadmin'
   const inicial = (profile?.nombre ?? profile?.email ?? 'A')[0].toUpperCase()
 
-  const Sidebar = () => (
+  // JSX en variable, no componente en el render (evita re-montajes).
+  const sidebar = (
     <div className="flex flex-col h-full">
       <div className="px-2 pt-1 pb-4"><Logo variant="white" className="h-9" /></div>
       <div className="px-3 pb-4 mb-2 border-b border-[#20304A]">
@@ -68,7 +69,7 @@ export default function AdminLayout() {
   return (
     <div className="flex h-screen bg-fondo">
       <aside className="hidden lg:flex flex-col w-[276px] shrink-0 bg-navy-950 border-r border-[#20304A] px-4 py-6">
-        <Sidebar />
+        {sidebar}
       </aside>
 
       {open && (
@@ -76,7 +77,7 @@ export default function AdminLayout() {
           <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)} />
           <aside className="relative w-[276px] bg-navy-950 border-r border-[#20304A] px-4 py-6 z-10">
             <button onClick={() => setOpen(false)} className="absolute top-5 right-4 text-[#AEBED0] hover:text-white"><X className="w-5 h-5" /></button>
-            <Sidebar />
+            {sidebar}
           </aside>
         </div>
       )}

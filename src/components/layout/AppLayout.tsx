@@ -45,7 +45,9 @@ export default function AppLayout() {
 
   const inicial = (profile?.nombre ?? profile?.email ?? 'U')[0].toUpperCase()
 
-  const Sidebar = () => (
+  // JSX en una variable (no un componente definido en el render): así React no
+  // desmonta y vuelve a montar el menú en cada actualización.
+  const sidebar = (
     <div className="flex flex-col h-full">
       {/* Logo (blanco sobre fondo oscuro) */}
       <div className="px-2 pt-1 pb-6">
@@ -84,7 +86,7 @@ export default function AppLayout() {
     <div className="flex h-screen bg-fondo">
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex flex-col w-[276px] shrink-0 bg-navy-950 border-r border-[#20304A] px-4 py-6">
-        <Sidebar />
+        {sidebar}
       </aside>
 
       {/* Sidebar móvil */}
@@ -95,7 +97,7 @@ export default function AppLayout() {
             <button onClick={() => setOpen(false)} className="absolute top-5 right-4 text-[#AEBED0] hover:text-white">
               <X className="w-5 h-5" />
             </button>
-            <Sidebar />
+            {sidebar}
           </aside>
         </div>
       )}
