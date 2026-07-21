@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import Logo from '../Logo'
 import {
   LayoutDashboard, FileText, Users, Package, Coins, Blocks,
-  Mail, Building2, LogOut, Menu, X, Plus,
+  Mail, Building2, LogOut, Menu, X, Plus, LifeBuoy,
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -18,6 +18,10 @@ const navItems = [
   { to: '/app/modulos', label: 'Módulos', icon: Blocks },
   { to: '/app/plantillas', label: 'Plantillas', icon: Mail },
   { to: '/app/configuracion', label: 'Mi empresa', icon: Building2 },
+  // La pantalla existía y estaba enrutada, pero sin entrada en el menú nadie
+  // podía llegar: el Soporte del superadmin esperaba tickets que ningún usuario
+  // tenía forma de crear.
+  { to: '/app/soporte', label: 'Soporte', icon: LifeBuoy },
 ]
 
 // clases del item de navegación (activo = turquesa + barra de acento + degradado)
