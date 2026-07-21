@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
-import { Save, Building2, CreditCard, Palette } from 'lucide-react'
+import { Save, Building2, CreditCard, Palette, Upload, Trash2 } from 'lucide-react'
 
 type Tab = 'empresa' | 'pago'
 
@@ -20,6 +20,7 @@ export default function ConfiguracionPage() {
   const [tab, setTab] = useState<Tab>('empresa')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [subiendo, setSubiendo] = useState(false)
 
   useEffect(() => {
     if (!wsId) return
@@ -29,6 +30,22 @@ export default function ConfiguracionPage() {
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f: any) => ({ ...f, [k]: e.target.value }))
+
+  // Sube el logo al almacenamiento del workspace y guarda su URL pública.
+  const subirLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !wsId) return
+    if (file.size > 2 * 1024 * 1024) { toast.error('El logo no debe pasar de 2 MB'); return }
+    setSubiendo(true)
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+    const ruta = `${wsId}/logo-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('logos').upload(ruta, file, { upsert: true, contentType: file.type })
+    if (error) { toast.error('No se pudo subir: ' + error.message); setSubiendo(false); return }
+    const { data } = supabase.storage.from('logos').getPublicUrl(ruta)
+    setForm((f: any) => ({ ...f, logo_url: data.publicUrl }))
+    toast.success('Logo subido. No olvides guardar.')
+    setSubiendo(false)
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -118,7 +135,28 @@ export default function ConfiguracionPage() {
               <div><label className="label">Email de empresa</label><input type="email" className="input" value={form.email ?? ''} onChange={set('email')} /></div>
               <div className="sm:col-span-2"><label className="label">Dirección fiscal</label><input className="input" value={form.direccion ?? ''} onChange={set('direccion')} /></div>
               <div className="sm:col-span-2"><label className="label">Sitio web</label><input className="input" placeholder="https://..." value={form.sitio_web ?? ''} onChange={set('sitio_web')} /></div>
-              <div className="sm:col-span-2"><label className="label">Logo (URL de imagen)</label><input className="input" placeholder="https://.../logo.png" value={form.logo_url ?? ''} onChange={set('logo_url')} /></div>
+              <div className="sm:col-span-2">
+                <label className="label">Logotipo de tus cotizaciones</label>
+                <div className="flex items-center gap-4">
+                  <div className="w-28 h-16 rounded-xl border border-dashed border-slate-300 bg-fondo flex items-center justify-center overflow-hidden shrink-0">
+                    {form.logo_url
+                      ? <img src={form.logo_url} alt="Logo" className="max-h-full max-w-full object-contain" />
+                      : <span className="text-[11px] text-slate-400">Sin logo</span>}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex gap-2">
+                      <label className="btn-secondary cursor-pointer text-xs">
+                        <Upload className="w-3.5 h-3.5" /> {subiendo ? 'Subiendo...' : 'Subir logotipo'}
+                        <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={subirLogo} disabled={subiendo} />
+                      </label>
+                      {form.logo_url && (
+                        <button type="button" onClick={() => setForm((f: any) => ({ ...f, logo_url: '' }))} className="btn-secondary text-xs text-red-600"><Trash2 className="w-3.5 h-3.5" /> Quitar</button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1.5">PNG, JPG o SVG con fondo transparente · Máximo 2 MB. Aparecerá en tus PDF y en la cotización pública.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

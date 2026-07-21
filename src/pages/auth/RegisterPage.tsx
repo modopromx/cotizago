@@ -60,6 +60,18 @@ export default function RegisterPage() {
         empresa: form.empresa,
         telefono: form.telefono,
       }).eq('id', data.user.id)
+
+      // Correo de bienvenida (si el admin ya configuró el servicio; si no, se ignora).
+      if (data.session) {
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
+          body: JSON.stringify({
+            clave: 'bienvenida', para: form.email,
+            variables: { nombre: form.nombre, email: form.email, folios: '5', link_recarga: `${window.location.origin}/app` },
+          }),
+        }).catch(() => { /* no bloquear el registro si falla el correo */ })
+      }
     }
 
     if (hasPlan && planPriceId) {

@@ -10,6 +10,49 @@ async function getSecret(admin: any, clave: string, envName: string) {
   return (data && data.valor) || Deno.env.get(envName) || ''
 }
 
+const render = (txt: string, vars: Record<string, string>) =>
+  (txt ?? '').replace(/\{\{(\w+)\}\}/g, (_m, k) => vars[k] ?? '')
+
+// Avisa al usuario que sus folios fueron acreditados (plantilla recarga_exitosa).
+// Nunca debe romper el webhook: cualquier fallo se ignora.
+async function avisarRecarga(admin: any, pago: any) {
+  try {
+    const apiKey = await getSecret(admin, 'resend_api_key', 'RESEND_API_KEY')
+    if (!apiKey) return
+    const { data: prof } = await admin.from('profiles').select('email,nombre,folios_balance').eq('id', pago.user_id).single()
+    if (!prof?.email) return
+    const { data: tpl } = await admin.from('email_templates').select('*').eq('clave', 'recarga_exitosa').maybeSingle()
+    if (!tpl) return
+    const { data: cfg } = await admin.from('config_plataforma').select('clave,valor')
+    const c: Record<string, string> = {}
+    ;(cfg ?? []).forEach((r: any) => { c[r.clave] = r.valor ?? '' })
+    const vars = {
+      plataforma: c.nombre_plataforma || 'Cotiza Go',
+      nombre: prof.nombre || 'Hola',
+      referencia: String(pago.id).slice(0, 8).toUpperCase(),
+      paquete: pago.paquete_nombre || 'Recarga de folios',
+      folios_acreditados: String(pago.folios_cantidad ?? 0),
+      monto: new Intl.NumberFormat('es-MX', { style: 'currency', currency: pago.moneda || 'MXN' }).format(Number(pago.monto) || 0),
+      fecha: new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }),
+      saldo_actual: String(prof.folios_balance ?? 0),
+    }
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: `${c.smtp_from_nombre || 'Cotiza Go'} <${c.smtp_from || 'no-reply@cotizago.com'}>`,
+        to: [prof.email], subject: render(tpl.asunto, vars),
+        html: tpl.cuerpo_html ? render(tpl.cuerpo_html, vars) : `<pre>${render(tpl.cuerpo, vars)}</pre>`,
+        text: render(tpl.cuerpo, vars),
+      }),
+    })
+    await admin.from('email_envios').insert({
+      workspace_id: pago.workspace_id, destinatario: prof.email,
+      asunto: render(tpl.asunto, vars), estado: res.ok ? 'enviado' : 'fallido',
+    })
+  } catch (_) { /* el correo no debe romper el webhook */ }
+}
+
 Deno.serve(async (req) => {
   const sig = req.headers.get('stripe-signature')
   if (!sig) return new Response('Sin firma', { status: 400 })
@@ -34,6 +77,8 @@ Deno.serve(async (req) => {
     if (pagoId) {
       await admin.from('pagos').update({ stripe_payment_id: String(session.payment_intent ?? '') }).eq('id', pagoId)
       await admin.rpc('acreditar_folios', { pago_uuid: pagoId })
+      const { data: pago } = await admin.from('pagos').select('*').eq('id', pagoId).single()
+      if (pago) await avisarRecarga(admin, pago)
     }
   }
 
