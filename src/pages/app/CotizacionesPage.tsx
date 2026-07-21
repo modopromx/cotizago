@@ -5,8 +5,9 @@ import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { descargarCotizacion } from '../../lib/cotizacionPdf'
 import { llenarPlantilla, abrirWhatsApp } from '../../lib/plantillas'
+import { enviarCotizacionPorEmail } from '../../lib/envios'
 import toast from 'react-hot-toast'
-import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink, Download, Copy, Ban } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink, Download, Copy, Ban, Mail } from 'lucide-react'
 
 const ESTADO_BADGE: Record<string, string> = {
   aceptada: 'bg-success-50 text-success-600',
@@ -44,7 +45,7 @@ export default function CotizacionesPage() {
   const load = async () => {
     if (!user) return
     const { data } = await supabase.from('cotizaciones')
-      .select('id,numero,estado,total,moneda,updated_at,cliente_nombre,cliente_empresa,cliente_whatsapp,token')
+      .select('id,numero,estado,total,moneda,updated_at,cliente_nombre,cliente_empresa,cliente_whatsapp,cliente_email,token')
       .order('updated_at', { ascending: false })
     setCotizaciones(data ?? [])
     setLoading(false)
@@ -80,6 +81,15 @@ export default function CotizacionesPage() {
       enlace_publico: enlace, vendedor: profile?.nombre ?? '',
     })
     abrirWhatsApp(msg, c.cliente_whatsapp)
+  }
+  const handleEmail = async (c: any) => {
+    const t = toast.loading('Enviando correo...')
+    try {
+      await enviarCotizacionPorEmail(c.id, profile?.nombre ?? '')
+      toast.success(`Cotización enviada a ${c.cliente_email}`, { id: t })
+    } catch (e: any) {
+      toast.error(e?.message ?? 'No se pudo enviar', { id: t })
+    }
   }
   const handleDuplicar = async (id: string) => {
     if (!user) return
@@ -178,6 +188,7 @@ export default function CotizacionesPage() {
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => handlePDF(c.id)} title="Descargar PDF" className="p-1.5 text-slate-400 hover:text-navy-700 hover:bg-slate-100 rounded-lg"><Download className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleWhatsApp(c)} title="Enviar por WhatsApp" className="p-1.5 text-slate-400 hover:text-success-600 hover:bg-success-50 rounded-lg"><MessageCircle className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleEmail(c)} disabled={!c.cliente_email} title={c.cliente_email ? 'Enviar por email' : 'El cliente no tiene correo'} className="p-1.5 text-slate-400 hover:text-azul-600 hover:bg-azul-50 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent"><Mail className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleCopy(c.token)} title="Copiar enlace" className="p-1.5 text-slate-400 hover:text-azul-600 hover:bg-azul-50 rounded-lg"><Link2 className="w-3.5 h-3.5" /></button>
                         <a href={`/c/${c.token}`} target="_blank" rel="noreferrer" title="Ver pública" className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><ExternalLink className="w-3.5 h-3.5" /></a>
                         <Link to={`/app/cotizaciones/${c.id}/editar`} title="Editar" className="p-1.5 text-slate-400 hover:text-navy-700 hover:bg-slate-100 rounded-lg"><Edit2 className="w-3.5 h-3.5" /></Link>
