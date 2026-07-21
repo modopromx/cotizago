@@ -77,29 +77,37 @@ export default function AdminConfigPage() {
   }
 
   const guardarPagos = async () => {
-    const pk = (config.stripe_publishable_key ?? '').trim()
-    const sk = (secretos.stripe_secret_key ?? '').trim()
-    const wh = (secretos.stripe_webhook_secret ?? '').trim()
+    const m = modo                       // 'test' | 'live' — el juego que se está editando
+    const kPk = `stripe_${m}_publishable_key`
+    const kSk = `stripe_${m}_secret_key`
+    const kWh = `stripe_${m}_webhook_secret`
+    const esperado = m === 'test' ? 'test' : 'live'
 
-    // Validaciones de seguridad: la llave pública se expone al navegador, así que
-    // NUNCA debe contener una llave secreta.
+    const pk = (config[kPk] ?? '').trim()
+    const sk = (secretos[kSk] ?? '').trim()
+    const wh = (secretos[kWh] ?? '').trim()
+
+    // La llave pública se expone al navegador: nunca debe contener una secreta.
     if (pk.startsWith('sk_') || pk.startsWith('rk_')) {
-      toast.error('Esa es tu llave SECRETA. La llave pública empieza con pk_ — no la pegues aquí, quedaría expuesta.', { duration: 8000 })
+      toast.error('Esa es tu llave SECRETA. La pública empieza con pk_ — aquí quedaría expuesta.', { duration: 8000 })
       return
     }
     if (pk && !pk.startsWith('pk_')) { toast.error('La llave pública debe empezar con pk_'); return }
     if (sk && !(sk.startsWith('sk_') || sk.startsWith('rk_'))) { toast.error('La llave secreta debe empezar con sk_'); return }
     if (wh && !wh.startsWith('whsec_')) { toast.error('El secreto de webhook debe empezar con whsec_'); return }
+    // Evitar mezclar juegos (pegar llaves live en el slot de prueba o viceversa).
+    if (pk && !pk.includes(`_${esperado}_`)) { toast.error(`Estás en modo ${m === 'test' ? 'Prueba' : 'Producción'}: la llave pública debe ser pk_${esperado}_...`); return }
+    if (sk && !sk.includes(`_${esperado}_`)) { toast.error(`Estás en modo ${m === 'test' ? 'Prueba' : 'Producción'}: la llave secreta debe ser sk_${esperado}_...`); return }
 
     setSaving(true)
     try {
-      await saveConfig('stripe_publishable_key', pk)
+      await saveConfig(kPk, pk)
       await saveConfig('stripe_habilitado', config.stripe_habilitado ?? 'false')
-      await saveConfig('stripe_modo', config.stripe_modo ?? 'test')
-      await saveSecreto('stripe_secret_key')
-      await saveSecreto('stripe_webhook_secret')
-      setSecretos(s => ({ ...s, stripe_secret_key: '', stripe_webhook_secret: '' }))
-      toast.success('Configuración de Stripe guardada')
+      await saveConfig('stripe_modo', m)
+      await saveSecreto(kSk)
+      await saveSecreto(kWh)
+      setSecretos(s => ({ ...s, [kSk]: '', [kWh]: '' }))
+      toast.success(`Credenciales de ${m === 'test' ? 'Prueba' : 'Producción'} guardadas`)
       await load()
     } catch (e: any) { toast.error(e?.message ?? 'Error al guardar') }
     setSaving(false)
@@ -132,9 +140,15 @@ export default function AdminConfigPage() {
     { id: 'pagos', label: 'Pagos (Stripe)', icon: CreditCard },
     { id: 'notificaciones', label: 'Notificaciones', icon: Bell },
   ]
-  const configurado = !!estado.stripe_secret_key && !!estado.stripe_webhook_secret && !!config.stripe_publishable_key
   const habilitado = config.stripe_habilitado === 'true'
-  const modoPrueba = (config.stripe_modo ?? 'test') === 'test'
+  // Juego de credenciales que se está viendo/editando y que se usará para cobrar.
+  const modo: 'test' | 'live' = (config.stripe_modo ?? 'test') === 'live' ? 'live' : 'test'
+  const modoPrueba = modo === 'test'
+  const kPk = `stripe_${modo}_publishable_key`
+  const kSk = `stripe_${modo}_secret_key`
+  const kWh = `stripe_${modo}_webhook_secret`
+  const listo = (m: string) => !!config[`stripe_${m}_publishable_key`] && !!estado[`stripe_${m}_secret_key`] && !!estado[`stripe_${m}_webhook_secret`]
+  const configurado = listo(modo)
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -179,28 +193,49 @@ export default function AdminConfigPage() {
           <div className="p-5 space-y-4">
             <p className="text-sm text-slate-500">Tarjetas internacionales — Visa, Mastercard, AMEX y más.</p>
 
-            <label className="flex items-center gap-2 text-sm text-navy-800 w-fit cursor-pointer">
-              <input type="checkbox" checked={modoPrueba} onChange={e => setConfig(c => ({ ...c, stripe_modo: e.target.checked ? 'test' : 'produccion' }))} className="rounded border-slate-300" />
-              Modo de prueba (sandbox)
-              <span className={`badge ${modoPrueba ? 'bg-amber-50 text-amber-600' : 'bg-primary-50 text-primary-600'}`}>{modoPrueba ? 'Prueba' : 'Producción'}</span>
-            </label>
+            {/* Selector de juego de credenciales: cada modo guarda las suyas */}
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="flex">
+                {(['test', 'live'] as const).map(m => (
+                  <button key={m} type="button" onClick={() => setConfig(c => ({ ...c, stripe_modo: m }))}
+                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 ${modo === m ? 'border-primary-500 bg-primary-50/50 text-navy-900' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}>
+                    <span className="flex items-center justify-center gap-2">
+                      {m === 'test' ? 'Prueba (sandbox)' : 'Producción'}
+                      {listo(m)
+                        ? <span className="badge bg-success-50 text-success-600 text-[10px]">Lista</span>
+                        : <span className="badge bg-slate-100 text-slate-400 text-[10px]">Vacía</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="px-4 py-2.5 text-xs text-slate-500 bg-fondo">
+                Cada modo guarda <strong>sus propias credenciales</strong>. El modo seleccionado es el que se usa para cobrar:
+                actualmente <strong className={modoPrueba ? 'text-amber-600' : 'text-primary-600'}>{modoPrueba ? 'Prueba — no se cobra dinero real' : 'Producción — se cobra de verdad'}</strong>.
+              </p>
+            </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Llave pública (publishable)</label>
-                <input className="input" placeholder={modoPrueba ? 'pk_test_...' : 'pk_live_...'} autoComplete="off" spellCheck={false}
-                  value={config.stripe_publishable_key ?? ''} onChange={setCfg('stripe_publishable_key')} />
+                <input className="input" placeholder={`pk_${modo}_...`} autoComplete="off" spellCheck={false}
+                  value={config[kPk] ?? ''} onChange={setCfg(kPk)} />
               </div>
-              <CampoSecreto label="Llave secreta" ph={modoPrueba ? 'sk_test_...' : 'sk_live_...'}
-                valor={secretos.stripe_secret_key ?? ''} pista={estado.stripe_secret_key}
-                visible={!!ver.stripe_secret_key} onToggle={() => toggleVer('stripe_secret_key')}
-                onChange={v => setSec('stripe_secret_key', v)} />
+              <CampoSecreto label="Llave secreta" ph={`sk_${modo}_...`}
+                valor={secretos[kSk] ?? ''} pista={estado[kSk]}
+                visible={!!ver[kSk]} onToggle={() => toggleVer(kSk)}
+                onChange={v => setSec(kSk, v)} />
             </div>
 
             <CampoSecreto label="Secreto de webhook (whsec)" ph="whsec_..."
-              valor={secretos.stripe_webhook_secret ?? ''} pista={estado.stripe_webhook_secret}
-              visible={!!ver.stripe_webhook_secret} onToggle={() => toggleVer('stripe_webhook_secret')}
-              onChange={v => setSec('stripe_webhook_secret', v)} />
+              valor={secretos[kWh] ?? ''} pista={estado[kWh]}
+              visible={!!ver[kWh]} onToggle={() => toggleVer(kWh)}
+              onChange={v => setSec(kWh, v)} />
+
+            {!modoPrueba && !listo('live') && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                Estás en <strong>Producción</strong> pero aún faltan credenciales de producción. Hasta completarlas no se podrá cobrar.
+              </p>
+            )}
 
             <div className="rounded-xl bg-fondo p-4 space-y-2">
               <p className="text-sm font-medium text-navy-900">Endpoint del webhook</p>
