@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { formatCurrency } from '../../lib/utils'
+import { formatCurrency, formatDate } from '../../lib/utils'
+import { cargarConfigStripe, instanciaStripe } from '../../lib/stripe'
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
+import type { Stripe } from '@stripe/stripe-js'
 import CampoTelefono from '../../components/CampoTelefono'
 import toast from 'react-hot-toast'
-import { MessageCircle, Mail, CreditCard, Code2, Blocks, Settings, Save, X, ExternalLink } from 'lucide-react'
+import { MessageCircle, Mail, CreditCard, Code2, Blocks, Settings, Save, X, ExternalLink, AlertTriangle } from 'lucide-react'
 
 const ICONOS: Record<string, any> = {
   whatsapp_propio: MessageCircle, email_profesional: Mail, pagos_linea: CreditCard, api_webhooks: Code2,
@@ -24,6 +28,11 @@ export default function ModulosPage() {
   const [config, setConfig] = useState<{ tipo: string; clave: string } | null>(null)
   const [form, setForm] = useState<any>({})
   const [saving, setSaving] = useState(false)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
+  const [stripeCfg, setStripeCfg] = useState<{ pk: string; habilitado: boolean }>({ pk: '', habilitado: false })
+  const [ocupado, setOcupado] = useState<string | null>(null)
+  const [params, setParams] = useSearchParams()
 
   const load = async () => {
     const [{ data: mods }, subsRes, intRes] = await Promise.all([
@@ -37,26 +46,84 @@ export default function ModulosPage() {
     setSubs(s); setIntegr(i); setLoading(false)
   }
   useEffect(() => { load() }, [wsId])
+  useEffect(() => { cargarConfigStripe().then(setStripeCfg) }, [])
 
-  const activos = Object.values(subs).filter((s: any) => s.estado === 'activa')
+  // Al volver del checkout, Stripe redirige aquí antes de que llegue el webhook.
+  // Se consulta unos segundos hasta ver la suscripción activa.
+  useEffect(() => {
+    if (params.get('suscripcion') !== 'procesando' || !wsId) return
+    let intentos = 0
+    const t = setInterval(async () => {
+      intentos++
+      const { data } = await supabase.from('modulo_suscripciones').select('*').eq('workspace_id', wsId)
+      const activo = (data ?? []).some((s: any) => ['activa', 'morosa'].includes(s.estado))
+      if (activo || intentos >= 10) {
+        clearInterval(t)
+        params.delete('suscripcion'); params.delete('session_id'); setParams(params, { replace: true })
+        if (activo) toast.success('Módulo activado')
+        else toast('El pago se está confirmando. Actualiza en un momento.', { icon: '⏳' })
+        load()
+      }
+    }, 1500)
+    return () => clearInterval(t)
+  }, [params, wsId])
+
+  // 'morosa' sigue contando como activo: falló un cobro pero Stripe reintenta.
+  const vigente = (s: any) => ['activa', 'morosa'].includes(s?.estado)
+  const activos = Object.values(subs).filter(vigente)
   const gastoMensual = activos.reduce((sum, s: any) => sum + (Number(modulos.find(m => m.clave === s.clave)?.precio) || 0), 0)
 
-  const contratar = async (m: any) => {
-    if (!wsId) return
-    // Cuando Stripe cobre módulos, aquí se cobra antes de activar.
-    const { error } = await supabase.from('modulo_suscripciones').upsert({
-      workspace_id: wsId, clave: m.clave, estado: 'activa',
-      fecha_contratacion: new Date().toISOString(),
-      fecha_renovacion: new Date(Date.now() + 30 * 864e5).toISOString(),
-    }, { onConflict: 'workspace_id,clave' })
-    if (error) toast.error('No se pudo contratar')
-    else { toast.success(`${m.nombre} activado`); load() }
+  const llamar = async (fn: string, body: any) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('Sesión expirada')
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fn}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.error ?? 'No se pudo completar la operación')
+    return data
   }
 
-  const cancelar = async (clave: string) => {
-    if (!wsId || !confirm('¿Cancelar este módulo?')) return
-    await supabase.from('modulo_suscripciones').update({ estado: 'cancelada' }).eq('workspace_id', wsId).eq('clave', clave)
-    toast.success('Módulo cancelado'); load()
+  // Ya no se activa aquí: se cobra y el webhook activa. Sin pago no hay módulo.
+  const contratar = async (m: any) => {
+    if (!wsId) return
+    if (!stripeCfg.habilitado || !stripeCfg.pk) {
+      toast.error('Los pagos aún no están configurados. Avísale al administrador.')
+      return
+    }
+    setOcupado(m.clave)
+    try {
+      const data = await llamar('create-subscription', { clave: m.clave })
+      setStripePromise(instanciaStripe(stripeCfg.pk))
+      setClientSecret(data.clientSecret)
+    } catch (e: any) {
+      toast.error(e.message)
+    } finally { setOcupado(null) }
+  }
+
+  const cancelar = async (m: any) => {
+    const s = subs[m.clave]
+    const fin = s?.periodo_fin ? formatDate(s.periodo_fin) : null
+    if (!confirm(fin
+      ? `El módulo seguirá activo hasta el ${fin} y no se volverá a cobrar. ¿Continuar?`
+      : '¿Cancelar este módulo?')) return
+    setOcupado(m.clave)
+    try {
+      await llamar('cancel-subscription', { clave: m.clave })
+      toast.success(fin ? `Se cancelará el ${fin}` : 'Módulo cancelado')
+      load()
+    } catch (e: any) { toast.error(e.message) } finally { setOcupado(null) }
+  }
+
+  const reactivar = async (m: any) => {
+    setOcupado(m.clave)
+    try {
+      await llamar('cancel-subscription', { clave: m.clave, reactivar: true })
+      toast.success('Se mantiene activo')
+      load()
+    } catch (e: any) { toast.error(e.message) } finally { setOcupado(null) }
   }
 
   const abrirConfig = (clave: string) => {
@@ -96,15 +163,20 @@ export default function ModulosPage() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {modulos.map(m => {
           const Icon = ICONOS[m.clave] ?? Blocks
-          const activo = subs[m.clave]?.estado === 'activa'
+          const s = subs[m.clave]
+          const activo = vigente(s)
+          const morosa = s?.estado === 'morosa'
+          const porCancelar = activo && s?.cancelar_al_terminar
           const tipo = TIPO_CONFIG[m.clave]
           const configurado = tipo && integr[tipo]?.activa
+          const cargando = ocupado === m.clave
           return (
             <div key={m.clave} className={`card p-5 flex flex-col ${activo ? 'ring-1 ring-primary-200' : ''}`}>
               <div className="flex items-start justify-between">
                 <span className="w-10 h-10 rounded-xl bg-fondo flex items-center justify-center text-navy-700"><Icon className="w-5 h-5" /></span>
-                <div className="flex gap-1">
-                  {activo && <span className="badge bg-success-50 text-success-600">Activo</span>}
+                <div className="flex gap-1 flex-wrap justify-end">
+                  {activo && !morosa && <span className="badge bg-success-50 text-success-600">Activo</span>}
+                  {morosa && <span className="badge bg-red-50 text-red-600">Pago pendiente</span>}
                   {activo && tipo && !configurado && <span className="badge bg-amber-50 text-amber-600">Configurar</span>}
                 </div>
               </div>
@@ -113,18 +185,55 @@ export default function ModulosPage() {
               <p className="mt-3 text-lg font-extrabold text-navy-900">{formatCurrency(m.precio)}<span className="text-xs font-normal text-slate-400">/mes</span></p>
               <p className="text-[11px] text-slate-400">Adicional a tus folios</p>
 
+              {morosa && (
+                <p className="mt-2 text-[11px] text-red-600 flex items-start gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                  No pudimos cobrar tu tarjeta. Actualízala para no perder el módulo.
+                </p>
+              )}
+              {porCancelar && s?.periodo_fin && (
+                <p className="mt-2 text-[11px] text-amber-600">Activo hasta el {formatDate(s.periodo_fin)}. No se volverá a cobrar.</p>
+              )}
+              {activo && !porCancelar && s?.periodo_fin && (
+                <p className="mt-2 text-[11px] text-slate-400">Se renueva el {formatDate(s.periodo_fin)}</p>
+              )}
+
               {activo ? (
                 <div className="mt-4 flex gap-2">
                   {tipo && <button onClick={() => abrirConfig(m.clave)} className="btn-secondary flex-1 justify-center text-xs"><Settings className="w-3.5 h-3.5" /> Configurar</button>}
-                  <button onClick={() => cancelar(m.clave)} className="btn-secondary flex-1 justify-center text-xs text-red-600">Cancelar</button>
+                  {porCancelar ? (
+                    <button onClick={() => reactivar(m)} disabled={cargando} className="btn-navy flex-1 justify-center text-xs">Reactivar</button>
+                  ) : (
+                    <button onClick={() => cancelar(m)} disabled={cargando} className="btn-secondary flex-1 justify-center text-xs text-red-600">Cancelar</button>
+                  )}
                 </div>
               ) : (
-                <button onClick={() => contratar(m)} className="btn-navy mt-4 w-full justify-center text-xs">Contratar</button>
+                <button onClick={() => contratar(m)} disabled={cargando} className="btn-navy mt-4 w-full justify-center text-xs">
+                  {cargando ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                  Contratar · {formatCurrency(m.precio)}/mes
+                </button>
               )}
             </div>
           )
         })}
       </div>
+
+      {/* Checkout embebido de Stripe: suscripción mensual del módulo */}
+      {clientSecret && stripePromise && (
+        <div className="fixed inset-0 bg-navy-950/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl my-8">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h2 className="font-bold text-navy-900">Suscripción mensual</h2>
+              <button onClick={() => setClientSecret(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-2">
+              <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Configuración del módulo contratado */}
       {config && (
