@@ -2,214 +2,163 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { formatCurrency, formatDatetime } from '../../lib/utils'
+import { formatCurrency, formatDate } from '../../lib/utils'
 import toast from 'react-hot-toast'
-import { Zap, Star, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { Coins, Check, FileText } from 'lucide-react'
 
 const PAQUETES_FALLBACK = [
-  { nombre: 'Pack 100', folios: 100, precio: 149, moneda: 'MXN', popular: false, orden: 1, id: '1' },
-  { nombre: 'Pack 300', folios: 300, precio: 349, moneda: 'MXN', popular: true, orden: 2, id: '2' },
-  { nombre: 'Pack 800', folios: 800, precio: 599, moneda: 'MXN', popular: false, orden: 3, id: '3' },
+  { id: '1', nombre: 'Emprende', folios: 25, precio: 199, moneda: 'MXN', popular: false, orden: 1 },
+  { id: '2', nombre: 'Negocio', folios: 100, precio: 499, moneda: 'MXN', popular: true, orden: 2 },
+  { id: '3', nombre: 'Pro', folios: 300, precio: 999, moneda: 'MXN', popular: false, orden: 3 },
 ]
 
 export default function FoliosPage() {
   const { user, profile, refreshProfile } = useAuth()
-  const [searchParams] = useSearchParams()
+  const [params] = useSearchParams()
   const [paquetes, setPaquetes] = useState<any[]>([])
   const [historial, setHistorial] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
+  const [checkout, setCheckout] = useState<string | null>(null)
 
-  // Mostrar resultado de pago si viene redirect de Stripe
   useEffect(() => {
-    const pago = searchParams.get('pago')
-    const folios = searchParams.get('folios')
-    if (pago === 'exitoso') {
-      toast.success(`¡Pago exitoso! Se acreditaron ${folios} folios a tu cuenta.`)
-      refreshProfile()
-    } else if (pago === 'cancelado') {
-      toast.error('Pago cancelado. Puedes intentarlo de nuevo cuando quieras.')
-    }
+    const pago = params.get('pago')
+    if (pago === 'exitoso') { toast.success('¡Pago exitoso! Folios acreditados.'); refreshProfile() }
+    else if (pago === 'cancelado') toast.error('Pago cancelado.')
   }, [])
 
+  const loadHistorial = () => {
+    if (!user) return
+    supabase.from('pagos').select('*').order('created_at', { ascending: false }).limit(20)
+      .then(({ data }) => { setHistorial(data ?? []); setLoading(false) })
+  }
+
   useEffect(() => {
-    supabase.from('paquetes_folios').select('*').eq('activo', true).order('orden').then(({ data }) => {
-      setPaquetes(data && data.length > 0 ? data : PAQUETES_FALLBACK)
-    })
-    if (user) {
-      supabase.from('pagos').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20).then(({ data }) => {
-        setHistorial(data ?? [])
-        setLoading(false)
-      })
-    }
+    supabase.from('paquetes_folios').select('*').eq('activo', true).order('orden')
+      .then(({ data }) => setPaquetes(data && data.length ? data : PAQUETES_FALLBACK))
+    loadHistorial()
   }, [user])
 
-  const handleCompra = async (paquete: any) => {
+  const handleCompra = async (p: any) => {
     if (!user) return
-    setCheckoutLoading(paquete.id)
-
+    setCheckout(p.id)
     try {
-      // Obtener token de sesión
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { toast.error('Sesión expirada. Vuelve a iniciar sesión.'); return }
-
-      // Llamar Edge Function para crear Stripe Checkout
+      if (!session) { toast.error('Sesión expirada.'); return }
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          price_id: paquete.stripe_price_id ?? `pack_${paquete.folios}`,
-          folios: paquete.folios,
-          paquete_nombre: paquete.nombre,
-          precio: paquete.precio,
-        }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ price_id: p.stripe_price_id ?? `pack_${p.folios}`, folios: p.folios, paquete_nombre: p.nombre, precio: p.precio }),
       })
+      const data = await res.json().catch(() => ({}))
+      if (data.url) window.location.href = data.url
+      else toast('Pagos en línea aún no activados. Escríbenos para tu link de pago.', { icon: '💬', duration: 6000 })
+    } catch {
+      toast('Pagos en línea aún no activados. Escríbenos para tu link de pago.', { icon: '💬', duration: 6000 })
+    } finally { setCheckout(null) }
+  }
 
-      const data = await res.json()
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        // Stripe no configurado aún — mostrar instrucción
-        toast('Pago por WhatsApp: envíanos el pack que deseas y te enviamos el link de pago.', {
-          icon: '💬',
-          duration: 6000,
-        })
-      }
-    } catch (err) {
-      toast.error('Error al conectar con el sistema de pagos. Contáctanos por WhatsApp.')
-    } finally {
-      setCheckoutLoading(null)
-    }
+  const solicitarFactura = async (pago: any) => {
+    if (!user) return
+    const { error } = await supabase.from('facturas_solicitudes').insert({
+      user_id: user.id, pago_id: pago.id, monto: pago.monto, estado: 'pendiente',
+    })
+    if (error) toast.error('No se pudo solicitar')
+    else { toast.success('Factura solicitada. Te avisaremos cuando esté lista.'); loadHistorial() }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Folios</h1>
-        <p className="text-slate-500 text-sm">Cada cotización enviada consume 1 folio. Los borradores no consumen folios.</p>
+        <h1 className="text-2xl font-bold text-navy-900">Folios y recargas</h1>
+        <p className="text-slate-500 text-sm">Cada cotización enviada consume 1 folio. Los borradores no consumen.</p>
       </div>
 
-      {/* Balance hero */}
-      <div className="bg-gradient-to-r from-primary-600 to-navy-700 rounded-2xl p-6 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="relative flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-5 h-5 text-primary-300" />
-              <span className="text-primary-200 text-sm font-medium">Saldo disponible</span>
-            </div>
-            <p className="text-6xl font-black mb-1">{profile?.folios_balance ?? 0}</p>
-            <p className="text-primary-200 text-sm">folios · equivalen a {profile?.folios_balance ?? 0} cotizaciones</p>
-          </div>
-          {(profile?.folios_balance ?? 0) > 0 && (
-            <div className="hidden sm:flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2">
-              <CheckCircle className="w-5 h-5 text-emerald-300" />
-              <span className="text-white text-sm font-medium">Cuenta activa</span>
-            </div>
-          )}
+      {/* Saldo */}
+      <div className="rounded-2xl p-6 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #06213B, #08AEB6)' }}>
+        <div className="absolute -right-10 -top-10 w-52 h-52 bg-white/5 rounded-full" />
+        <div className="relative">
+          <div className="flex items-center gap-2 text-white/70 text-xs font-semibold uppercase tracking-wider"><Coins className="w-4 h-4" /> Saldo actual</div>
+          <p className="text-5xl font-black mt-2">{profile?.folios_balance ?? 0} <span className="text-2xl font-semibold text-white/70">folios</span></p>
+          <p className="text-white/70 text-sm mt-1">Tus folios no caducan y se acumulan con cada recarga.</p>
         </div>
       </div>
 
       {/* Paquetes */}
       <div>
-        <h2 className="text-lg font-bold text-slate-800 mb-1">Recargar folios</h2>
-        <p className="text-slate-500 text-sm mb-4">Pago único con tarjeta. Sin mensualidades, sin contratos.</p>
-        <div className="grid sm:grid-cols-3 gap-4">
+        <h2 className="text-lg font-bold text-navy-900">Compra más folios</h2>
+        <p className="text-slate-500 text-sm mb-4">Selecciona el paquete ideal para tu volumen de cotizaciones.</p>
+        <div className="grid sm:grid-cols-3 gap-5">
           {paquetes.map(p => (
-            <div key={p.id} className={`card p-5 relative transition-all hover:shadow-md ${p.popular ? 'border-primary-300 ring-2 ring-primary-200 shadow-lg shadow-primary-100' : ''}`}>
-              {p.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1 bg-primary-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
-                    <Star className="w-3 h-3 fill-white" /> MÁS POPULAR
-                  </span>
-                </div>
-              )}
-              <div className="text-center pt-2">
-                <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">{p.nombre}</p>
-                <p className="text-4xl font-black text-slate-800 mb-0.5">{p.folios}</p>
-                <p className="text-slate-500 text-xs mb-4">folios · ${(p.precio / p.folios).toFixed(2)} c/u</p>
-                <div className="flex items-baseline justify-center gap-1 mb-5">
-                  <span className="text-slate-500 text-sm">$</span>
-                  <span className="text-3xl font-bold text-slate-900">{p.precio}</span>
-                  <span className="text-slate-500 text-sm">MXN</span>
-                </div>
-                <button
-                  onClick={() => handleCompra(p)}
-                  disabled={checkoutLoading === p.id}
-                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${p.popular ? 'bg-primary-600 hover:bg-primary-700 text-white shadow-md shadow-primary-300/30' : 'bg-slate-900 hover:bg-slate-700 text-white'}`}
-                >
-                  {checkoutLoading === p.id
-                    ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    : null
-                  }
-                  {checkoutLoading === p.id ? 'Conectando...' : `Comprar ${p.nombre}`}
-                </button>
+            <div key={p.id} className={`card p-6 relative ${p.popular ? 'ring-2 ring-primary-500 shadow-card-hover' : ''}`}>
+              {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">Más elegido</span>}
+              <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Paquete</p>
+              <h3 className="text-lg font-bold text-navy-900">{p.nombre}</h3>
+              <div className="mt-3 flex items-end gap-1">
+                <span className="text-3xl font-extrabold text-primary-600">{p.folios}</span><span className="text-slate-500 mb-1">folios</span>
               </div>
+              <p className="text-xs text-slate-400 mt-0.5">${(p.precio / p.folios).toFixed(2)} por folio</p>
+              <p className="mt-3 text-2xl font-extrabold text-navy-900">${p.precio} <span className="text-sm font-medium text-slate-400">MXN</span></p>
+              <button onClick={() => handleCompra(p)} disabled={checkout === p.id}
+                className={`mt-4 w-full justify-center ${p.popular ? 'btn-primary' : 'btn-navy'}`}>
+                {checkout === p.id ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                {checkout === p.id ? 'Conectando...' : 'Comprar paquete'}
+              </button>
+              <ul className="mt-5 space-y-2 text-xs text-slate-600">
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-success-500" /> Sin fecha de caducidad</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-success-500" /> Folios acumulables</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-success-500" /> Activación inmediata</li>
+              </ul>
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2 justify-center mt-4 text-xs text-slate-400">
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          Pago 100% seguro con Stripe · Tarjeta o OXXO Pay
-        </div>
+        <p className="text-center text-xs text-slate-400 mt-4">🔒 Pago seguro · Activación inmediata · Folios acumulables</p>
       </div>
 
       {/* Historial */}
       <div>
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Historial de recargas</h2>
+        <h2 className="text-lg font-bold text-navy-900 mb-3">Historial de recargas</h2>
         {loading ? (
           <div className="card p-6 text-center text-slate-500 text-sm">Cargando...</div>
         ) : historial.length === 0 ? (
           <div className="card p-8 text-center">
-            <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-slate-500 text-sm">Sin recargas aún. Cuando compres tu primer pack aparecerá aquí.</p>
+            <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-slate-500 text-sm">Sin recargas aún. Cuando compres tu primer paquete aparecerá aquí.</p>
           </div>
         ) : (
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-slate-50">
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">Paquete</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">Folios</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">Monto</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">Estado</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">Fecha</th>
+                <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 bg-slate-50/60">
+                  <th className="px-6 py-3 font-medium">Fecha</th>
+                  <th className="px-4 py-3 font-medium">Paquete</th>
+                  <th className="px-4 py-3 font-medium">Folios</th>
+                  <th className="px-4 py-3 font-medium">Total</th>
+                  <th className="px-4 py-3 font-medium">Estado</th>
+                  <th className="px-4 py-3 font-medium">Factura</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {historial.map(h => (
                   <tr key={h.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-700">{h.paquete_nombre ?? 'Recarga'}</td>
-                    <td className="px-4 py-3 text-emerald-600 font-semibold">+{h.folios_cantidad}</td>
-                    <td className="px-4 py-3 font-semibold text-slate-800">{formatCurrency(h.monto, h.moneda)}</td>
+                    <td className="px-6 py-3 text-slate-500">{formatDate(h.created_at)}</td>
+                    <td className="px-4 py-3 text-navy-900">{h.paquete_nombre ?? 'Recarga'}</td>
+                    <td className="px-4 py-3 text-success-600 font-semibold">+{h.folios_cantidad ?? 0}</td>
+                    <td className="px-4 py-3 font-semibold text-navy-900">{formatCurrency(h.monto, h.moneda)}</td>
                     <td className="px-4 py-3">
-                      <span className={`badge flex items-center gap-1 w-fit ${h.estado === 'aprobado' ? 'bg-green-100 text-green-700' : h.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                        {h.estado === 'aprobado' ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                        {h.estado}
+                      <span className={`badge ${h.acreditado || h.estado === 'aprobado' ? 'bg-success-50 text-success-600' : 'bg-amber-50 text-amber-600'}`}>
+                        {h.acreditado || h.estado === 'aprobado' ? 'Aprobado' : 'Pendiente'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{formatDatetime(h.created_at)}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => solicitarFactura(h)} className="text-xs font-medium text-primary-600 hover:underline">Solicitar factura</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
-
-      {/* Necesitas factura */}
-      <div className="card p-4 bg-slate-50 border-dashed">
-        <p className="text-sm text-slate-600">
-          ¿Necesitas factura por tu compra?{' '}
-          <a href="https://wa.me/521234567890" className="text-primary-600 hover:underline font-medium">
-            Escríbenos a WhatsApp
-          </a>{' '}
-          con tu RFC y te la enviamos en 24 hrs.
-        </p>
+        <p className="text-xs text-slate-400 mt-3">¿Necesitas facturar? Configura primero tus datos fiscales en Mi empresa. El PDF y XML aparecerán aquí cuando administración los cargue.</p>
       </div>
     </div>
   )
