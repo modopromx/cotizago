@@ -58,6 +58,58 @@ async function avisarRecarga(admin, pago) {
 
 const iso = (unix) => unix ? new Date(unix * 1000).toISOString() : null
 
+// OJO con la version de la API de Stripe. Desde 2025 (la cuenta usa
+// 2026-01-28.clover) dos campos cambiaron de sitio y ambos llegan como null si
+// se leen a la antigua:
+//   invoice.subscription            -> invoice.parent.subscription_details.subscription
+//   subscription.current_period_end -> subscription.items.data[0].current_period_end
+// Se leen las dos formas para que funcione con cuentas viejas y nuevas.
+const subIdDeFactura = (inv) =>
+  String(inv?.subscription ?? inv?.parent?.subscription_details?.subscription ?? '')
+
+const metadataDeFactura = (inv) =>
+  inv?.parent?.subscription_details?.metadata ?? inv?.subscription_details?.metadata ?? null
+
+const finDePeriodo = (sub) =>
+  sub?.current_period_end ?? sub?.items?.data?.[0]?.current_period_end ?? null
+
+// Stripe NO garantiza el orden de los eventos: invoice.payment_succeeded puede
+// llegar antes que checkout.session.completed. Si la suscripcion todavia no
+// existe en nuestra tabla, se reconstruye desde los metadatos que viajan en la
+// propia suscripcion. Sin esto, el primer cobro se pierde sin dejar rastro.
+async function asegurarSuscripcion(admin, stripe, subId, modo, metaDirecta = null) {
+  if (!subId) return null
+  const { data: existente } = await admin.from('modulo_suscripciones')
+    .select('*').eq('stripe_subscription_id', subId).maybeSingle()
+  if (existente) return existente
+
+  // Si la factura ya trae los metadatos, se evita la llamada a la API.
+  let sub = null
+  let md = metaDirecta
+  if (!md?.workspace_id || !md?.clave) {
+    try { sub = await stripe.subscriptions.retrieve(subId) } catch (_) { return null }
+    md = sub?.metadata ?? {}
+  }
+  if (!md.workspace_id || !md.clave) return null
+
+  await admin.from('modulo_suscripciones').upsert({
+    workspace_id: md.workspace_id,
+    clave: md.clave,
+    user_id: md.user_id ?? null,
+    estado: 'activa',
+    modo,
+    stripe_subscription_id: subId,
+    stripe_customer_id: sub ? String(sub.customer ?? '') : null,
+    cancelar_al_terminar: sub ? !!sub.cancel_at_period_end : false,
+    periodo_fin: iso(finDePeriodo(sub)),
+    fecha_contratacion: new Date().toISOString(),
+  }, { onConflict: 'workspace_id,clave' })
+
+  const { data: creada } = await admin.from('modulo_suscripciones')
+    .select('*').eq('stripe_subscription_id', subId).maybeSingle()
+  return creada
+}
+
 // Estado de Stripe -> estado nuestro.
 // 'morosa' conserva el acceso a propósito: Stripe reintenta el cobro varios días
 // y cortar al primer fallo deja sin servicio a quien solo cambió de tarjeta.
@@ -95,6 +147,11 @@ Deno.serve(async (req) => {
 
   // El propio evento dice si es real o de prueba.
   const modo = event.livemode ? 'live' : 'test'
+
+  // Cliente con la llave real del modo del evento: se necesita para consultar
+  // una suscripcion cuando los eventos llegan desordenados.
+  const secretKey = await getSecret(admin, `stripe_${modo}_secret_key`)
+  const stripeReal = new Stripe(secretKey || 'sk_placeholder', { apiVersion: '2024-06-20' })
 
   try {
     switch (event.type) {
@@ -143,11 +200,10 @@ Deno.serve(async (req) => {
       case 'invoice.paid':
       case 'invoice.payment_succeeded': {
         const inv = event.data.object
-        const subId = inv.subscription ? String(inv.subscription) : ''
+        const subId = subIdDeFactura(inv)
         if (!subId) break
 
-        const { data: sus } = await admin.from('modulo_suscripciones')
-          .select('*').eq('stripe_subscription_id', subId).maybeSingle()
+        const sus = await asegurarSuscripcion(admin, stripeReal, subId, modo, metadataDeFactura(inv))
         if (!sus) break
 
         const linea = inv.lines?.data?.[0]
@@ -189,7 +245,7 @@ Deno.serve(async (req) => {
       // ---- No se pudo cobrar: queda morosa, conserva acceso ------------------
       case 'invoice.payment_failed': {
         const inv = event.data.object
-        const subId = inv.subscription ? String(inv.subscription) : ''
+        const subId = subIdDeFactura(inv)
         if (!subId) break
         await admin.from('modulo_suscripciones')
           .update({ estado: 'morosa' })
@@ -200,11 +256,14 @@ Deno.serve(async (req) => {
       // ---- Cambios de estado / cancelación programada ------------------------
       case 'customer.subscription.updated': {
         const sub = event.data.object
+        // Puede llegar antes que checkout.session.completed.
+        await asegurarSuscripcion(admin, stripeReal, String(sub.id), modo)
         const nuevo = estadoDesdeStripe(sub.status)
+        const fin = iso(finDePeriodo(sub))
         const patch = {
           cancelar_al_terminar: !!sub.cancel_at_period_end,
-          periodo_fin: iso(sub.current_period_end),
-          fecha_renovacion: iso(sub.current_period_end),
+          periodo_fin: fin,
+          fecha_renovacion: fin,
         }
         if (nuevo) patch.estado = nuevo
         await admin.from('modulo_suscripciones')
@@ -218,7 +277,7 @@ Deno.serve(async (req) => {
         await admin.from('modulo_suscripciones').update({
           estado: 'cancelada',
           cancelar_al_terminar: false,
-          periodo_fin: iso(sub.ended_at ?? sub.current_period_end),
+          periodo_fin: iso(sub.ended_at ?? finDePeriodo(sub)),
         }).eq('stripe_subscription_id', String(sub.id))
         break
       }

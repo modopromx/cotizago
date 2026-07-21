@@ -11,6 +11,13 @@ const cors = {
 }
 const json = (b, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } })
 
+// Desde la API 2025 de Stripe el fin de periodo dejo de estar en la suscripcion
+// y vive en cada item. Se leen ambas formas.
+const finDePeriodo = (sub) => {
+  const unix = sub?.current_period_end ?? sub?.items?.data?.[0]?.current_period_end ?? null
+  return unix ? new Date(unix * 1000).toISOString() : null
+}
+
 async function getSecret(admin, clave) {
   const { data } = await admin.from('plataforma_secretos').select('valor').eq('clave', clave).maybeSingle()
   return (data && data.valor) || ''
@@ -57,13 +64,13 @@ Deno.serve(async (req) => {
 
     await admin.from('modulo_suscripciones').update({
       cancelar_al_terminar: !reactivar,
-      periodo_fin: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+      periodo_fin: finDePeriodo(sub),
     }).eq('workspace_id', ws).eq('clave', clave)
 
     return json({
       ok: true,
       cancelar_al_terminar: !reactivar,
-      periodo_fin: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+      periodo_fin: finDePeriodo(sub),
     })
   } catch (e) {
     return json({ error: String(e) }, 500)
