@@ -33,11 +33,11 @@ export default function AdminConfigPage() {
   const saveConfig = async (clave: string, valor: string) => {
     await supabase.from('config_plataforma').upsert({ clave, valor, updated_at: new Date().toISOString() }, { onConflict: 'clave' })
   }
-  // Guarda un secreto (solo si el usuario escribió algo nuevo). No se puede leer de vuelta.
+  // Guarda un secreto vía función de servidor (la tabla no es escribible por API).
   const saveSecreto = async (clave: string) => {
     const v = secretos[clave]
     if (!v) return
-    const { error } = await supabase.from('plataforma_secretos').upsert({ clave, valor: v, updated_at: new Date().toISOString() }, { onConflict: 'clave' })
+    const { error } = await supabase.rpc('guardar_secreto', { p_clave: clave, p_valor: v })
     if (error) throw error
   }
 
