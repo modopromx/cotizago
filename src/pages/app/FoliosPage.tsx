@@ -4,8 +4,10 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { descargarNotaRemision } from '../../lib/cotizacionPdf'
+import { stripePromise, stripeConfigurado } from '../../lib/stripe'
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
 import toast from 'react-hot-toast'
-import { Coins, Check, FileText } from 'lucide-react'
+import { Coins, Check, FileText, X } from 'lucide-react'
 
 const PAQUETES_FALLBACK = [
   { id: '1', nombre: 'Emprende', folios: 25, precio: 199, moneda: 'MXN', popular: false, orden: 1 },
@@ -21,6 +23,7 @@ export default function FoliosPage() {
   const [empresa, setEmpresa] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [checkout, setCheckout] = useState<string | null>(null)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
 
   // Facturación: en México es factura fiscal (CFDI); fuera de México, nota de remisión.
   const esMexico = (empresa?.pais ?? 'MX') === 'MX'
@@ -28,8 +31,13 @@ export default function FoliosPage() {
 
   useEffect(() => {
     const pago = params.get('pago')
-    if (pago === 'exitoso') { toast.success('¡Pago exitoso! Folios acreditados.'); refreshProfile() }
-    else if (pago === 'cancelado') toast.error('Pago cancelado.')
+    if (pago === 'procesando') {
+      // El webhook acredita en segundo plano; refrescamos el saldo un par de veces.
+      toast.success('¡Pago recibido! Acreditando tus folios...')
+      refreshProfile()
+      setTimeout(refreshProfile, 2500)
+      setTimeout(() => { refreshProfile(); loadHistorial() }, 6000)
+    } else if (pago === 'cancelado') toast.error('Pago cancelado.')
   }, [])
 
   const loadHistorial = () => {
@@ -50,6 +58,10 @@ export default function FoliosPage() {
 
   const handleCompra = async (p: any) => {
     if (!user) return
+    if (!stripeConfigurado) {
+      toast('Pagos en línea aún no activados. Escríbenos para tu link de pago.', { icon: '💬', duration: 6000 })
+      return
+    }
     setCheckout(p.id)
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -57,13 +69,13 @@ export default function FoliosPage() {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ price_id: p.stripe_price_id ?? `pack_${p.folios}`, folios: p.folios, paquete_nombre: p.nombre, precio: p.precio }),
+        body: JSON.stringify({ folios: p.folios, paquete_nombre: p.nombre, precio: p.precio }),
       })
       const data = await res.json().catch(() => ({}))
-      if (data.url) window.location.href = data.url
-      else toast('Pagos en línea aún no activados. Escríbenos para tu link de pago.', { icon: '💬', duration: 6000 })
+      if (data.clientSecret) setClientSecret(data.clientSecret)
+      else toast.error(data.error ?? 'No se pudo iniciar el pago')
     } catch {
-      toast('Pagos en línea aún no activados. Escríbenos para tu link de pago.', { icon: '💬', duration: 6000 })
+      toast.error('Error al conectar con el sistema de pagos')
     } finally { setCheckout(null) }
   }
 
@@ -109,6 +121,23 @@ export default function FoliosPage() {
 
   return (
     <div className="space-y-6">
+      {/* Checkout embebido de Stripe */}
+      {clientSecret && stripePromise && (
+        <div className="fixed inset-0 bg-navy-950/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl my-8">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h2 className="font-bold text-navy-900">Pago seguro</h2>
+              <button onClick={() => setClientSecret(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-2">
+              <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold text-navy-900">Folios y recargas</h1>
         <p className="text-slate-500 text-sm">Cada cotización enviada consume 1 folio. Los borradores no consumen.</p>
