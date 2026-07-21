@@ -31,6 +31,7 @@ import AdminCotizacionesPage from './pages/admin/AdminCotizacionesPage'
 import AdminClientesPage from './pages/admin/AdminClientesPage'
 import AdminPagosPage from './pages/admin/AdminPagosPage'
 import AdminPaquetesPage from './pages/admin/AdminPaquetesPage'
+import AdminModulosPage from './pages/admin/AdminModulosPage'
 import AdminSoportePage from './pages/admin/AdminSoportePage'
 import AdminConfigPage from './pages/admin/AdminConfigPage'
 import AdminLogsPage from './pages/admin/AdminLogsPage'
@@ -102,6 +103,7 @@ function AppRoutes() {
         <Route path="clientes" element={<AdminClientesPage />} />
         <Route path="pagos" element={<AdminPagosPage />} />
         <Route path="paquetes" element={<AdminPaquetesPage />} />
+        <Route path="modulos" element={<AdminModulosPage />} />
         <Route path="soporte" element={<AdminSoportePage />} />
         <Route path="equipo" element={<AdminEquipoPage />} />
         <Route path="whatsapp" element={<AdminWhatsAppPage />} />

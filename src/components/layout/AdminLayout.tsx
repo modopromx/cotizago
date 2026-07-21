@@ -14,6 +14,7 @@ const adminNav = [
   { to: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText },
   { to: '/admin/pagos', label: 'Pagos y cobros', icon: CreditCard },
   { to: '/admin/paquetes', label: 'Paquetes de folios', icon: Package2 },
+  { to: '/admin/modulos', label: 'Planes y módulos', icon: Blocks },
   { to: '/admin/clientes', label: 'Clientes', icon: Blocks },
   { to: '/admin/email-templates', label: 'Plantillas email', icon: Mail },
   { to: '/admin/soporte', label: 'Soporte', icon: LifeBuoy },
