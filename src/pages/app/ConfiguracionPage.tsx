@@ -34,6 +34,19 @@ export default function ConfiguracionPage() {
     e.preventDefault()
     if (!wsId) { toast.error('No se encontró tu workspace'); return }
     setSaving(true)
+
+    // Candado anti-duplicados: el teléfono no puede estar en otra cuenta.
+    if (form.telefono) {
+      const { data: dup } = await supabase.rpc('verificar_duplicado', {
+        p_user_id: profile?.id ?? null, p_nombre: null, p_telefono: form.telefono, p_email: null,
+      })
+      if (dup === 'telefono') {
+        toast.error('Ese teléfono ya está registrado en otra cuenta.')
+        setSaving(false)
+        return
+      }
+    }
+
     const { error } = await supabase.from('empresas').upsert(
       { ...form, workspace_id: wsId, updated_at: new Date().toISOString() },
       { onConflict: 'workspace_id' }

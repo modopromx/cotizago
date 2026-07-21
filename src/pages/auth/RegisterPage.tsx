@@ -1,13 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import Logo from '../../components/Logo'
 import toast from 'react-hot-toast'
-import { FileText, Eye, EyeOff, Check, Zap } from 'lucide-react'
+import { Eye, EyeOff, Check, Gift, Zap } from 'lucide-react'
+
+const DUPLICADO_MSG: Record<string, string> = {
+  email: 'Este correo ya está registrado.',
+  nombre: 'Ya existe una cuenta con ese nombre. Si es tuya, inicia sesión.',
+  telefono: 'Ese teléfono ya está registrado en otra cuenta.',
+}
 
 export default function RegisterPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [form, setForm] = useState({ nombre: '', empresa: '', email: '', password: '' })
+  const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', email: '', password: '' })
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -25,6 +32,16 @@ export default function RegisterPage() {
     if (form.password.length < 6) { toast.error('Mínimo 6 caracteres para la contraseña'); return }
     setLoading(true)
 
+    // Candado anti-duplicados (nombre completo, teléfono, email) antes de crear la cuenta.
+    const { data: dup } = await supabase.rpc('verificar_duplicado', {
+      p_user_id: null, p_nombre: form.nombre, p_telefono: form.telefono, p_email: form.email,
+    })
+    if (dup) {
+      toast.error(DUPLICADO_MSG[dup as string] ?? 'Datos ya registrados en otra cuenta.')
+      setLoading(false)
+      return
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
@@ -36,11 +53,12 @@ export default function RegisterPage() {
       return
     }
 
-    // Actualizar perfil
+    // Actualizar perfil con los datos del registro.
     if (data.user) {
       await supabase.from('profiles').update({
         nombre: form.nombre,
         empresa: form.empresa,
+        telefono: form.telefono,
       }).eq('id', data.user.id)
     }
 
@@ -62,10 +80,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2.5 text-white mb-2 hover:opacity-80 transition-opacity">
-            <img src="/logo-icon.svg" width={38} height={45} alt="CotizaGo" />
-            <span className="text-2xl font-bold">CotizaGo</span>
-          </Link>
+          <Link to="/" className="inline-flex mb-2 hover:opacity-80 transition-opacity"><Logo variant="white" className="h-10" /></Link>
           <p className="text-slate-400 text-sm mt-1">La forma más rápida de cotizar en LATAM</p>
         </div>
 
@@ -93,24 +108,37 @@ export default function RegisterPage() {
           <h1 className="text-xl font-bold text-slate-800 mb-1">
             {hasPlan ? 'Crea tu cuenta y paga' : 'Crear cuenta gratis'}
           </h1>
-          <p className="text-slate-500 text-sm mb-6">
+          <p className="text-slate-500 text-sm mb-4">
             {hasPlan ? `Paso 1 de 2: Crea tu cuenta para continuar al pago` : 'Empieza en 30 segundos. Sin tarjeta requerida.'}
           </p>
+
+          {!hasPlan && (
+            <div className="flex items-center gap-2 rounded-xl bg-success-50 border border-success-100 px-3 py-2 mb-5">
+              <Gift className="w-4 h-4 text-success-600 shrink-0" />
+              <p className="text-xs text-success-800"><strong>5 folios de prueba gratis</strong> al crear tu cuenta.</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Tu nombre *</label>
-                <input type="text" className="input" placeholder="Alan" value={form.nombre} onChange={set('nombre')} required />
+                <label className="label">Nombre y apellido *</label>
+                <input type="text" className="input" placeholder="Alan Velázquez" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div>
                 <label className="label">Empresa</label>
                 <input type="text" className="input" placeholder="Mi Empresa" value={form.empresa} onChange={set('empresa')} />
               </div>
             </div>
-            <div>
-              <label className="label">Correo electrónico *</label>
-              <input type="email" className="input" placeholder="tu@empresa.com" value={form.email} onChange={set('email')} required />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Teléfono</label>
+                <input type="tel" className="input" placeholder="55 1234 5678" value={form.telefono} onChange={set('telefono')} />
+              </div>
+              <div>
+                <label className="label">Correo electrónico *</label>
+                <input type="email" className="input" placeholder="tu@empresa.com" value={form.email} onChange={set('email')} required />
+              </div>
             </div>
             <div>
               <label className="label">Contraseña *</label>
