@@ -6,8 +6,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'cotiza-go-logo.png', 'logo-icon.svg'],
+      // 'prompt' y no 'autoUpdate': con autoUpdate el service worker toma el
+      // control y recarga la pestaña en cuanto detecta una version nueva, lo
+      // que puede pasar mientras alguien esta capturando una cotizacion y
+      // hacerle perder lo escrito. Aqui se le avisa y el usuario decide cuando.
+      registerType: 'prompt',
+      includeAssets: [
+        'icon.svg', 'cotiza-go-logo.png', 'logo-icon.svg',
+        'apple-touch-icon.png', 'favicon-32x32.png',
+      ],
       manifest: {
         name: 'Cotiza Go — Cotizaciones profesionales',
         short_name: 'Cotiza Go',
@@ -20,9 +27,14 @@ export default defineConfig({
         background_color: '#F3F6F9',
         theme_color: '#06213B',
         categories: ['business', 'productivity'],
+        // iOS ignora los iconos SVG y Chrome pide PNG de 192 y 512 para ofrecer
+        // la instalacion, asi que los PNG son los que mandan. El SVG queda como
+        // extra para pantallas de alta densidad.
         icons: [
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
         shortcuts: [
           { name: 'Nueva cotización', short_name: 'Cotizar', url: '/app/cotizaciones/nueva' },

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import AvisoActualizacion from './components/AvisoActualizacion'
 
 // Landing
 import LandingPage from './pages/landing/LandingPage'
@@ -122,6 +123,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <AvisoActualizacion />
         <Toaster
           position="top-right"
           toastOptions={{
