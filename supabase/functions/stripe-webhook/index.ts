@@ -135,7 +135,13 @@ Deno.serve(async (req) => {
       }
 
       // ---- Renovación mensual cobrada ---------------------------------------
-      case 'invoice.paid': {
+      // Stripe manda DOS eventos equivalentes al cobrar una suscripción:
+      // invoice.paid e invoice.payment_succeeded. Se atienden los dos para que
+      // funcione con cualquiera que esté activo en el panel; el registro del
+      // cobro es idempotente (índice único por invoice), así que si llegaran
+      // ambos no se duplica la venta.
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded': {
         const inv = event.data.object
         const subId = inv.subscription ? String(inv.subscription) : ''
         if (!subId) break
@@ -153,20 +159,29 @@ Deno.serve(async (req) => {
         }).eq('id', sus.id)
 
         // Se registra el cobro para que aparezca en Pagos del superadmin.
+        // Se comprueba antes por número de factura; el índice único sobre
+        // metadata->>'invoice' queda como última defensa si dos eventos entran
+        // a la vez. Un duplicado no debe tumbar el webhook, solo ignorarse.
         if (sus.user_id && Number(inv.amount_paid) > 0) {
-          await admin.from('pagos').insert({
-            user_id: sus.user_id,
-            workspace_id: sus.workspace_id,
-            monto: Number(inv.amount_paid) / 100,
-            moneda: String(inv.currency ?? 'mxn').toUpperCase(),
-            proveedor: 'stripe',
-            tipo: 'modulo',
-            paquete_nombre: sus.clave,
-            folios_cantidad: 0,
-            estado: 'pagado',
-            stripe_payment_id: String(inv.payment_intent ?? inv.id),
-            metadata: { modo, clave: sus.clave, invoice: inv.id },
-          })
+          const { data: yaHay } = await admin.from('pagos')
+            .select('id').eq('tipo', 'modulo').eq('metadata->>invoice', inv.id).maybeSingle()
+          if (!yaHay) {
+            const { error: pagoErr } = await admin.from('pagos').insert({
+              user_id: sus.user_id,
+              workspace_id: sus.workspace_id,
+              monto: Number(inv.amount_paid) / 100,
+              moneda: String(inv.currency ?? 'mxn').toUpperCase(),
+              proveedor: 'stripe',
+              tipo: 'modulo',
+              paquete_nombre: sus.clave,
+              folios_cantidad: 0,
+              estado: 'pagado',
+              stripe_payment_id: String(inv.payment_intent ?? inv.id),
+              metadata: { modo, clave: sus.clave, invoice: inv.id },
+            })
+            // 23505 = violación de índice único: el cobro ya estaba registrado.
+            if (pagoErr && pagoErr.code !== '23505') throw pagoErr
+          }
         }
         break
       }
