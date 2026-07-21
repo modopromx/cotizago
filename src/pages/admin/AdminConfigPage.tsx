@@ -10,27 +10,32 @@ const WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-we
 // IMPORTANTE: estos componentes viven FUERA del render del padre. Si se definen
 // dentro, React los recrea en cada tecla y el input pierde el foco (no se puede
 // escribir una llave completa).
-function Estado({ ok }: { ok?: boolean }) {
-  return ok
-    ? <span className="inline-flex items-center gap-1 text-xs text-success-600"><CheckCircle2 className="w-3.5 h-3.5" /> Configurado</span>
+function Estado({ pista }: { pista?: string }) {
+  return pista
+    ? <span className="inline-flex items-center gap-1 text-xs text-success-600"><CheckCircle2 className="w-3.5 h-3.5" /> Guardada</span>
     : <span className="text-xs text-amber-600">Sin configurar</span>
 }
 
-function CampoSecreto({ label, ph, valor, ok, visible, onToggle, onChange }: {
-  label: string; ph: string; valor: string; ok?: boolean
+function CampoSecreto({ label, ph, valor, pista, visible, onToggle, onChange }: {
+  label: string; ph: string; valor: string; pista?: string
   visible: boolean; onToggle: () => void; onChange: (v: string) => void
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between"><label className="label mb-0">{label}</label><Estado ok={ok} /></div>
+      <div className="flex items-center justify-between"><label className="label mb-0">{label}</label><Estado pista={pista} /></div>
       <div className="relative mt-1">
-        <input type={visible ? 'text' : 'password'} className="input pr-10" placeholder={ph}
+        <input type={visible ? 'text' : 'password'} className="input pr-10"
+          placeholder={pista ? pista : ph}
           value={valor} onChange={e => onChange(e.target.value)} autoComplete="off" spellCheck={false} />
         <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
           {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
-      {ok && !valor && <p className="text-[11px] text-slate-400 mt-1">Ya guardada. Escribe una nueva solo si quieres reemplazarla.</p>}
+      {pista && !valor && (
+        <p className="text-[11px] text-success-700 mt-1">
+          Guardada como <code className="font-mono">{pista}</code>. Sigue activa — escribe una nueva solo si quieres reemplazarla.
+        </p>
+      )}
     </div>
   )
 }
@@ -38,7 +43,7 @@ function CampoSecreto({ label, ph, valor, ok, visible, onToggle, onChange }: {
 export default function AdminConfigPage() {
   const [tab, setTab] = useState<Tab>('pagos')
   const [config, setConfig] = useState<Record<string, string>>({})
-  const [estado, setEstado] = useState<Record<string, boolean>>({})
+  const [estado, setEstado] = useState<Record<string, string>>({})
   const [secretos, setSecretos] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -52,7 +57,7 @@ export default function AdminConfigPage() {
     const map: Record<string, string> = {}
     ;(cfg ?? []).forEach((r: any) => { map[r.clave] = r.valor ?? '' })
     setConfig(map)
-    setEstado((est.data as Record<string, boolean>) ?? {})
+    setEstado((est.data as Record<string, string>) ?? {})
     setLoading(false)
   }
   useEffect(() => { load() }, [])
@@ -72,9 +77,23 @@ export default function AdminConfigPage() {
   }
 
   const guardarPagos = async () => {
+    const pk = (config.stripe_publishable_key ?? '').trim()
+    const sk = (secretos.stripe_secret_key ?? '').trim()
+    const wh = (secretos.stripe_webhook_secret ?? '').trim()
+
+    // Validaciones de seguridad: la llave pública se expone al navegador, así que
+    // NUNCA debe contener una llave secreta.
+    if (pk.startsWith('sk_') || pk.startsWith('rk_')) {
+      toast.error('Esa es tu llave SECRETA. La llave pública empieza con pk_ — no la pegues aquí, quedaría expuesta.', { duration: 8000 })
+      return
+    }
+    if (pk && !pk.startsWith('pk_')) { toast.error('La llave pública debe empezar con pk_'); return }
+    if (sk && !(sk.startsWith('sk_') || sk.startsWith('rk_'))) { toast.error('La llave secreta debe empezar con sk_'); return }
+    if (wh && !wh.startsWith('whsec_')) { toast.error('El secreto de webhook debe empezar con whsec_'); return }
+
     setSaving(true)
     try {
-      await saveConfig('stripe_publishable_key', config.stripe_publishable_key ?? '')
+      await saveConfig('stripe_publishable_key', pk)
       await saveConfig('stripe_habilitado', config.stripe_habilitado ?? 'false')
       await saveConfig('stripe_modo', config.stripe_modo ?? 'test')
       await saveSecreto('stripe_secret_key')
@@ -173,13 +192,13 @@ export default function AdminConfigPage() {
                   value={config.stripe_publishable_key ?? ''} onChange={setCfg('stripe_publishable_key')} />
               </div>
               <CampoSecreto label="Llave secreta" ph={modoPrueba ? 'sk_test_...' : 'sk_live_...'}
-                valor={secretos.stripe_secret_key ?? ''} ok={estado.stripe_secret_key}
+                valor={secretos.stripe_secret_key ?? ''} pista={estado.stripe_secret_key}
                 visible={!!ver.stripe_secret_key} onToggle={() => toggleVer('stripe_secret_key')}
                 onChange={v => setSec('stripe_secret_key', v)} />
             </div>
 
             <CampoSecreto label="Secreto de webhook (whsec)" ph="whsec_..."
-              valor={secretos.stripe_webhook_secret ?? ''} ok={estado.stripe_webhook_secret}
+              valor={secretos.stripe_webhook_secret ?? ''} pista={estado.stripe_webhook_secret}
               visible={!!ver.stripe_webhook_secret} onToggle={() => toggleVer('stripe_webhook_secret')}
               onChange={v => setSec('stripe_webhook_secret', v)} />
 
@@ -216,9 +235,9 @@ export default function AdminConfigPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-            <CampoSecreto label="Contraseña SMTP" ph="•••" valor={secretos.smtp_password ?? ''} ok={estado.smtp_password}
+            <CampoSecreto label="Contraseña SMTP" ph="•••" valor={secretos.smtp_password ?? ''} pista={estado.smtp_password}
               visible={!!ver.smtp_password} onToggle={() => toggleVer('smtp_password')} onChange={v => setSec('smtp_password', v)} />
-            <CampoSecreto label="o API Key de Resend" ph="re_..." valor={secretos.resend_api_key ?? ''} ok={estado.resend_api_key}
+            <CampoSecreto label="o API Key de Resend" ph="re_..." valor={secretos.resend_api_key ?? ''} pista={estado.resend_api_key}
               visible={!!ver.resend_api_key} onToggle={() => toggleVer('resend_api_key')} onChange={v => setSec('resend_api_key', v)} />
           </div>
 
