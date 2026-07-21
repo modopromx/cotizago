@@ -8,7 +8,8 @@ export default function AdminPaquetesPage() {
   const [paquetes, setPaquetes] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
-  const [form, setForm] = useState({ nombre: '', folios: 100, precio: 149, moneda: 'MXN', popular: false, activo: true, orden: 1 })
+  const [form, setForm] = useState<any>({ nombre: '', folios: 100, precio: 149, moneda: 'MXN', popular: false, activo: true, orden: 1, descripcion: '' })
+  const [beneficiosText, setBeneficiosText] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
@@ -20,18 +21,22 @@ export default function AdminPaquetesPage() {
 
   const openModal = (p?: any) => {
     setEditing(p ?? null)
-    setForm(p ? { nombre: p.nombre, folios: p.folios, precio: p.precio, moneda: p.moneda, popular: p.popular, activo: p.activo, orden: p.orden } : { nombre: '', folios: 100, precio: 149, moneda: 'MXN', popular: false, activo: true, orden: paquetes.length + 1 })
+    setForm(p
+      ? { nombre: p.nombre, folios: p.folios, precio: p.precio, moneda: p.moneda, popular: p.popular, activo: p.activo, orden: p.orden, descripcion: p.descripcion ?? '' }
+      : { nombre: '', folios: 100, precio: 149, moneda: 'MXN', popular: false, activo: true, orden: paquetes.length + 1, descripcion: '' })
+    setBeneficiosText((p?.beneficios ?? []).join('\n'))
     setModal(true)
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    const payload = { ...form, beneficios: beneficiosText.split('\n').map(s => s.trim()).filter(Boolean) }
     if (editing) {
-      await supabase.from('paquetes_folios').update(form).eq('id', editing.id)
+      await supabase.from('paquetes_folios').update(payload).eq('id', editing.id)
       toast.success('Paquete actualizado')
     } else {
-      await supabase.from('paquetes_folios').insert(form)
+      await supabase.from('paquetes_folios').insert(payload)
       toast.success('Paquete creado')
     }
     setModal(false)
@@ -47,7 +52,7 @@ export default function AdminPaquetesPage() {
   }
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value }))
+    setForm((f: any) => ({ ...f, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value }))
 
   return (
     <div className="space-y-5">
@@ -86,7 +91,11 @@ export default function AdminPaquetesPage() {
               <button onClick={() => setModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSave} className="p-5 space-y-3">
-              <div><label className="label">Nombre</label><input className="input" required value={form.nombre} onChange={set('nombre')} placeholder="Pack 100" /></div>
+              <div><label className="label">Nombre</label><input className="input" required value={form.nombre} onChange={set('nombre')} placeholder="Negocio" /></div>
+              <div><label className="label">Descripción</label><input className="input" value={form.descripcion} onChange={set('descripcion')} placeholder="Para ventas constantes" /></div>
+              <div><label className="label">Beneficios (uno por línea)</label>
+                <textarea className="input resize-none" rows={3} value={beneficiosText} onChange={e => setBeneficiosText(e.target.value)} placeholder={'PDFs personalizados\nWhatsApp y email\nSin fecha de caducidad'} />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="label">Folios</label><input type="number" className="input" min="1" value={form.folios} onChange={set('folios')} /></div>
                 <div><label className="label">Precio</label><input type="number" className="input" min="0" step="0.01" value={form.precio} onChange={set('precio')} /></div>

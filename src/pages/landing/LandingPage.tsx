@@ -6,6 +6,7 @@ import {
   Home, Users, Settings, TrendingUp, Plus,
 } from 'lucide-react'
 import Logo from '../../components/Logo'
+import { usePaquetes } from '../../lib/usePaquetes'
 
 // ─── DATOS ────────────────────────────────────────────────
 const NAV_LINKS = [
@@ -32,15 +33,6 @@ const STEPS = [
   { num: '01', icon: Pencil, title: 'Captura los datos', desc: 'Selecciona tu cliente, agrega conceptos, precios e impuestos.' },
   { num: '02', icon: FileText, title: 'Genera tu PDF', desc: 'Obtén un documento profesional con tu identidad de marca.' },
   { num: '03', icon: Send, title: 'Envía y da seguimiento', desc: 'Compártelo por WhatsApp o email en un solo toque.' },
-]
-
-const PLANES = [
-  { nombre: 'Emprende', folios: 25, precio: 199, desc: 'Para comenzar a cotizar',
-    features: ['PDFs personalizados', 'WhatsApp y email', 'Sin fecha de caducidad'], popular: false },
-  { nombre: 'Negocio', folios: 100, precio: 499, desc: 'Para ventas constantes',
-    features: ['Todo lo de Emprende', 'Ahorro por cotización', 'Soporte prioritario'], popular: true },
-  { nombre: 'Pro', folios: 300, precio: 999, desc: 'Para equipos de alto volumen',
-    features: ['Todo lo de Negocio', 'Mejor precio por folio', 'Uso multiusuario'], popular: false },
 ]
 
 // ─── COMPONENTES ──────────────────────────────────────────
@@ -395,6 +387,7 @@ function Steps() {
 }
 
 function Pricing() {
+  const { paquetes } = usePaquetes()
   return (
     <section id="paquetes" className="max-w-6xl mx-auto px-4 py-24">
       <div className="text-center max-w-2xl mx-auto">
@@ -403,25 +396,25 @@ function Pricing() {
         <p className="mt-4 text-slate-600">Sin rentas mensuales ni contratos. Tus folios no caducan.</p>
       </div>
       <div className="mt-14 grid md:grid-cols-3 gap-6 items-start">
-        {PLANES.map(p => (
-          <div key={p.nombre}
+        {paquetes.map(p => (
+          <div key={p.id}
             className={`card p-7 relative ${p.popular ? 'ring-2 ring-primary-500 shadow-card-hover md:-mt-4 md:pb-11' : ''}`}>
             {p.popular && (
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-500 text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wide">Más elegido</span>
             )}
             <h3 className="font-bold text-navy-900 text-lg">{p.nombre}</h3>
-            <p className="text-sm text-slate-500">{p.desc}</p>
+            <p className="text-sm text-slate-500">{p.descripcion}</p>
             <div className="mt-5 flex items-end gap-1">
               <span className="text-4xl font-extrabold text-primary-600">{p.folios}</span>
               <span className="text-slate-500 mb-1">folios</span>
             </div>
-            <p className="mt-2 text-2xl font-extrabold text-navy-900">${p.precio} <span className="text-sm font-medium text-slate-400">MXN</span></p>
-            <Link to={`/registro?plan=${p.nombre.toLowerCase()}`}
+            <p className="mt-2 text-2xl font-extrabold text-navy-900">${p.precio} <span className="text-sm font-medium text-slate-400">{p.moneda ?? 'MXN'}</span></p>
+            <Link to={`/registro?plan=${(p.nombre ?? '').toLowerCase()}`}
               className={`mt-5 w-full justify-center ${p.popular ? 'btn-primary' : 'btn-secondary'}`}>
               Elegir paquete
             </Link>
             <ul className="mt-6 space-y-2.5">
-              {p.features.map(f => (
+              {(p.beneficios ?? []).map((f: string) => (
                 <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
                   <Check className="w-4 h-4 text-success-500 shrink-0" /> {f}
                 </li>

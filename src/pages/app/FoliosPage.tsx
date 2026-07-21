@@ -4,22 +4,17 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { descargarNotaRemision } from '../../lib/cotizacionPdf'
+import { usePaquetes } from '../../lib/usePaquetes'
 import { cargarConfigStripe, instanciaStripe } from '../../lib/stripe'
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
 import type { Stripe } from '@stripe/stripe-js'
 import toast from 'react-hot-toast'
 import { Coins, Check, FileText, X } from 'lucide-react'
 
-const PAQUETES_FALLBACK = [
-  { id: '1', nombre: 'Emprende', folios: 25, precio: 199, moneda: 'MXN', popular: false, orden: 1 },
-  { id: '2', nombre: 'Negocio', folios: 100, precio: 499, moneda: 'MXN', popular: true, orden: 2 },
-  { id: '3', nombre: 'Pro', folios: 300, precio: 999, moneda: 'MXN', popular: false, orden: 3 },
-]
-
 export default function FoliosPage() {
   const { user, profile, refreshProfile } = useAuth()
   const [params] = useSearchParams()
-  const [paquetes, setPaquetes] = useState<any[]>([])
+  const { paquetes } = usePaquetes()   // paquetes en vivo (realtime)
   const [historial, setHistorial] = useState<any[]>([])
   const [empresa, setEmpresa] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -52,8 +47,6 @@ export default function FoliosPage() {
   useEffect(() => { cargarConfigStripe().then(setStripeCfg) }, [])
 
   useEffect(() => {
-    supabase.from('paquetes_folios').select('*').eq('activo', true).order('orden')
-      .then(({ data }) => setPaquetes(data && data.length ? data : PAQUETES_FALLBACK))
     if (profile?.workspace_id) {
       supabase.from('empresas').select('pais,rfc,razon_social,nombre_comercial').eq('workspace_id', profile.workspace_id).maybeSingle()
         .then(({ data }) => setEmpresa(data))
