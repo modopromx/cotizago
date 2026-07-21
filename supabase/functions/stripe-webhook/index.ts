@@ -231,7 +231,10 @@ Deno.serve(async (req) => {
               tipo: 'modulo',
               paquete_nombre: sus.clave,
               folios_cantidad: 0,
-              estado: 'pagado',
+              // 'aprobado' es el mismo valor que usa acreditar_folios para las
+              // recargas. Si aqui se usara otra palabra, los totales del
+              // superadmin dejarian fuera los cobros de modulos.
+              estado: 'aprobado',
               stripe_payment_id: String(inv.payment_intent ?? inv.id),
               metadata: { modo, clave: sus.clave, invoice: inv.id },
             })
