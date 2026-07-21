@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { descargarCotizacion } from '../../lib/cotizacionPdf'
 import { llenarPlantilla, abrirWhatsApp } from '../../lib/plantillas'
-import { enviarCotizacionPorEmail } from '../../lib/envios'
+import { enviarCotizacionPorEmail, generarLinkWhatsApp } from '../../lib/envios'
 import toast from 'react-hot-toast'
 import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink, Download, Copy, Ban, Mail } from 'lucide-react'
 
@@ -73,15 +73,25 @@ export default function CotizacionesPage() {
     try { await descargarCotizacion(id); toast.success('PDF descargado', { id: t }) }
     catch { toast.error('No se pudo generar el PDF', { id: t }) }
   }
-  const handleWhatsApp = (c: any) => {
+  const handleWhatsApp = async (c: any) => {
     const enlace = `${window.location.origin}/c/${c.token}`
     const msg = llenarPlantilla(plantillaWA, {
       cliente: c.cliente_nombre || 'Hola', folio: c.numero,
       total: formatCurrency(c.total, c.moneda), empresa: profile?.empresa ?? profile?.nombre ?? '',
       enlace_publico: enlace, vendedor: profile?.nombre ?? '',
     })
-    const { conDestino } = abrirWhatsApp(msg, c.cliente_whatsapp)
-    if (!conDestino) toast('Este cliente no tiene WhatsApp con código de país; elige el contacto en WhatsApp.', { icon: '📱', duration: 5000 })
+    const digitos = (c.cliente_whatsapp ?? '').replace(/\D/g, '')
+    if (digitos.length < 10) {
+      abrirWhatsApp(msg, undefined)
+      toast('Este cliente no tiene WhatsApp con código de país; elige el contacto en WhatsApp.', { icon: '📱', duration: 5000 })
+      return
+    }
+    const t = toast.loading('Preparando WhatsApp...')
+    const { url, fuente } = await generarLinkWhatsApp({
+      telefono: digitos, mensaje: msg, referencia: c.numero, cotizacionId: c.id,
+    })
+    toast.success(fuente === 'walinker' ? 'Link de marca listo' : 'Abriendo WhatsApp', { id: t })
+    window.open(url, '_blank')
   }
   const handleEmail = async (c: any) => {
     const t = toast.loading('Enviando correo...')

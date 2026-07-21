@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
-import { Save, CreditCard, Bell, CheckCircle2, Copy, ShieldCheck, Eye, EyeOff, ExternalLink } from 'lucide-react'
+import { Save, CreditCard, Bell, CheckCircle2, Copy, ShieldCheck, Eye, EyeOff, ExternalLink, MessageCircle } from 'lucide-react'
 
-type Tab = 'pagos' | 'notificaciones'
+type Tab = 'pagos' | 'notificaciones' | 'whatsapp'
 
 const WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`
+const WALINKER_WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/walinker-webhook`
 
 // IMPORTANTE: estos componentes viven FUERA del render del padre. Si se definen
 // dentro, React los recrea en cada tecla y el input pierde el foco (no se puede
@@ -130,7 +131,21 @@ export default function AdminConfigPage() {
     setSaving(false)
   }
 
-  const setCfg = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setConfig(c => ({ ...c, [k]: e.target.value }))
+  const guardarWhatsApp = async () => {
+    setSaving(true)
+    try {
+      await saveConfig('walinker_habilitado', config.walinker_habilitado ?? 'false')
+      await saveConfig('walinker_tipo_link', config.walinker_tipo_link ?? 'brand')
+      await saveSecreto('walinker_api_key')
+      await saveSecreto('walinker_webhook_token')
+      setSecretos(s => ({ ...s, walinker_api_key: '', walinker_webhook_token: '' }))
+      toast.success('Integración de WhatsApp guardada')
+      await load()
+    } catch (e: any) { toast.error(e?.message ?? 'Error al guardar') }
+    setSaving(false)
+  }
+
+  const setCfg = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setConfig(c => ({ ...c, [k]: e.target.value }))
   const setSec = (k: string, v: string) => setSecretos(s => ({ ...s, [k]: v }))
   const toggleVer = (k: string) => setVer(v => ({ ...v, [k]: !v[k] }))
 
@@ -139,6 +154,7 @@ export default function AdminConfigPage() {
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'pagos', label: 'Pagos (Stripe)', icon: CreditCard },
     { id: 'notificaciones', label: 'Notificaciones', icon: Bell },
+    { id: 'whatsapp', label: 'WhatsApp (Walinker)', icon: MessageCircle },
   ]
   const habilitado = config.stripe_habilitado === 'true'
   // Juego de credenciales que se está viendo/editando y que se usará para cobrar.
@@ -252,6 +268,60 @@ export default function AdminConfigPage() {
                 <Save className="w-4 h-4" /> Guardar configuración
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'whatsapp' && (
+        <div className="card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-navy-900 font-semibold"><MessageCircle className="w-4 h-4 text-success-600" /> Walinker · links de marca</div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-xs text-slate-500">Habilitado</span>
+              <button type="button" onClick={() => setConfig(c => ({ ...c, walinker_habilitado: c.walinker_habilitado === 'true' ? 'false' : 'true' }))}
+                className={`w-10 h-5 rounded-full transition-colors relative ${config.walinker_habilitado === 'true' ? 'bg-success-500' : 'bg-slate-300'}`}>
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${config.walinker_habilitado === 'true' ? 'left-5' : 'left-0.5'}`} />
+              </button>
+            </label>
+          </div>
+
+          <p className="text-xs text-slate-500 bg-fondo rounded-lg p-3">
+            Al activarlo, las cotizaciones se envían con un <strong>link corto de marca</strong> (walinker.pro/xxx) en vez del wa.me largo, y se registran los clics.
+            Si Walinker falla o se acaba la cuota, <strong>se usa wa.me automáticamente</strong> — el envío nunca se bloquea.
+          </p>
+
+          <CampoSecreto label="API Key de Walinker" ph="Pega aquí tu X-Api-Key"
+            valor={secretos.walinker_api_key ?? ''} pista={estado.walinker_api_key}
+            visible={!!ver.walinker_api_key} onToggle={() => toggleVer('walinker_api_key')}
+            onChange={v => setSec('walinker_api_key', v)} />
+
+          <div>
+            <label className="label">Tipo de link</label>
+            <select className="input" value={config.walinker_tipo_link ?? 'brand'} onChange={setCfg('walinker_tipo_link')}>
+              <option value="brand">De marca (walinker.pro/mi-marca)</option>
+              <option value="short">Corto genérico</option>
+            </select>
+          </div>
+
+          <div className="rounded-xl bg-fondo p-4 space-y-2">
+            <p className="text-sm font-medium text-navy-900">Webhook para recibir eventos de Walinker</p>
+            <p className="text-xs text-slate-500">Registra esta URL en Walinker (eventos <code className="text-navy-700">link.created</code>, <code className="text-navy-700">link.reused</code>, <code className="text-navy-700">link.error</code>).</p>
+            <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 px-3 py-2">
+              <code className="text-xs text-slate-600 truncate flex-1">{WALINKER_WEBHOOK_URL}</code>
+              <button onClick={() => { navigator.clipboard.writeText(WALINKER_WEBHOOK_URL); toast.success('Copiado') }} className="text-slate-400 hover:text-navy-700 inline-flex items-center gap-1 text-xs"><Copy className="w-3.5 h-3.5" /> Copiar</button>
+            </div>
+            <CampoSecreto label="Token del webhook (opcional, recomendado)" ph="una clave que tú inventes"
+              valor={secretos.walinker_webhook_token ?? ''} pista={estado.walinker_webhook_token}
+              visible={!!ver.walinker_webhook_token} onToggle={() => toggleVer('walinker_webhook_token')}
+              onChange={v => setSec('walinker_webhook_token', v)} />
+            <p className="text-[11px] text-slate-400">Si lo defines, Walinker debe enviarlo como <code>?token=…</code> o header <code>X-Webhook-Token</code>. Sin token, el webhook acepta cualquier envío.</p>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={guardarWhatsApp} disabled={saving} className="btn-navy">
+              {saving && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              <Save className="w-4 h-4" /> Guardar integración
+            </button>
           </div>
         </div>
       )}
