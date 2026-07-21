@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
@@ -17,8 +17,13 @@ export default function FoliosPage() {
   const [params] = useSearchParams()
   const [paquetes, setPaquetes] = useState<any[]>([])
   const [historial, setHistorial] = useState<any[]>([])
+  const [empresa, setEmpresa] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [checkout, setCheckout] = useState<string | null>(null)
+
+  // Facturación: en México es factura fiscal (CFDI); fuera de México, nota de remisión.
+  const esMexico = (empresa?.pais ?? 'MX') === 'MX'
+  const docFiscal = esMexico ? 'factura' : 'nota de remisión'
 
   useEffect(() => {
     const pago = params.get('pago')
@@ -35,8 +40,12 @@ export default function FoliosPage() {
   useEffect(() => {
     supabase.from('paquetes_folios').select('*').eq('activo', true).order('orden')
       .then(({ data }) => setPaquetes(data && data.length ? data : PAQUETES_FALLBACK))
+    if (profile?.workspace_id) {
+      supabase.from('empresas').select('pais,rfc,razon_social,nombre_comercial').eq('workspace_id', profile.workspace_id).maybeSingle()
+        .then(({ data }) => setEmpresa(data))
+    }
     loadHistorial()
-  }, [user])
+  }, [user, profile?.workspace_id])
 
   const handleCompra = async (p: any) => {
     if (!user) return
@@ -59,11 +68,19 @@ export default function FoliosPage() {
 
   const solicitarFactura = async (pago: any) => {
     if (!user) return
+    if (!empresa?.rfc) {
+      toast.error(`Agrega tu RFC / ID fiscal en "Mi empresa" para solicitar tu ${docFiscal}.`)
+      return
+    }
     const { error } = await supabase.from('facturas_solicitudes').insert({
       user_id: user.id, pago_id: pago.id, monto: pago.monto, estado: 'pendiente',
+      tipo: esMexico ? 'factura' : 'nota_remision',
+      pais: empresa?.pais ?? 'MX',
+      rfc: empresa?.rfc ?? null,
+      razon_social: empresa?.razon_social ?? empresa?.nombre_comercial ?? null,
     })
     if (error) toast.error('No se pudo solicitar')
-    else { toast.success('Factura solicitada. Te avisaremos cuando esté lista.'); loadHistorial() }
+    else { toast.success(`Solicitud de ${docFiscal} enviada. Te avisaremos cuando esté lista.`); loadHistorial() }
   }
 
   return (
@@ -134,7 +151,7 @@ export default function FoliosPage() {
                   <th className="px-4 py-3 font-medium">Folios</th>
                   <th className="px-4 py-3 font-medium">Total</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="px-4 py-3 font-medium">Factura</th>
+                  <th className="px-4 py-3 font-medium">{esMexico ? 'Factura' : 'Nota de remisión'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -150,7 +167,9 @@ export default function FoliosPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => solicitarFactura(h)} className="text-xs font-medium text-primary-600 hover:underline">Solicitar factura</button>
+                      <button onClick={() => solicitarFactura(h)} className="text-xs font-medium text-primary-600 hover:underline">
+                        Solicitar {esMexico ? 'factura' : 'nota de remisión'}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -158,7 +177,11 @@ export default function FoliosPage() {
             </table>
           </div>
         )}
-        <p className="text-xs text-slate-400 mt-3">¿Necesitas facturar? Configura primero tus datos fiscales en Mi empresa. El PDF y XML aparecerán aquí cuando administración los cargue.</p>
+        <p className="text-xs text-slate-400 mt-3">
+          {esMexico
+            ? <>¿Necesitas facturar? Configura tu RFC y régimen en <Link to="/app/configuracion" className="text-primary-600 hover:underline">Mi empresa</Link>. El PDF y XML (CFDI) aparecerán aquí cuando administración los cargue.</>
+            : <>Fuera de México emitimos una <strong>nota de remisión</strong> con tu ID fiscal para que la deduzcas localmente. Agrégalo en <Link to="/app/configuracion" className="text-primary-600 hover:underline">Mi empresa</Link>. El documento aparecerá aquí cuando esté listo.</>}
+        </p>
       </div>
     </div>
   )
