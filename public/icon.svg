@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06213B"/>
+      <stop offset="100%" stop-color="#0B6DAD"/>
+    </linearGradient>
+    <linearGradient id="doc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#17C5C9"/>
+      <stop offset="55%" stop-color="#0B6DAD"/>
+      <stop offset="100%" stop-color="#06213B"/>
+    </linearGradient>
+  </defs>
+  <!-- fondo -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- marca: hoja con gráfica ascendente -->
+  <g transform="translate(146 116) scale(1.72)">
+    <path d="M8 14 Q8 4 18 4 L70 4 L102 36 L102 116 Q102 126 92 126 L18 126 Q8 126 8 116 Z"
+      fill="url(#doc)" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M70 4 L70 36 L102 36" fill="none" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
+    <polyline points="22,96 37,70 52,82 68,54" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="68" y1="54" x2="86" y2="54" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+    <polyline points="79,45 88,54 79,63" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
