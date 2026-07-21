@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
-import { Save, CreditCard, Bell, CheckCircle2, Copy, ShieldCheck } from 'lucide-react'
+import { Save, CreditCard, Bell, CheckCircle2, Copy, ShieldCheck, Eye, EyeOff, ExternalLink } from 'lucide-react'
 
 type Tab = 'pagos' | 'notificaciones'
 
@@ -14,6 +14,7 @@ export default function AdminConfigPage() {
   const [secretos, setSecretos] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [ver, setVer] = useState<Record<string, boolean>>({})
 
   const load = async () => {
     const [{ data: cfg }, est] = await Promise.all([
@@ -43,10 +44,17 @@ export default function AdminConfigPage() {
   const guardarPagos = async () => {
     setSaving(true)
     try {
+      // Públicas / no secretas → config_plataforma
+      await Promise.all([
+        saveConfig('stripe_publishable_key', config.stripe_publishable_key ?? ''),
+        saveConfig('stripe_habilitado', config.stripe_habilitado ?? 'false'),
+        saveConfig('stripe_modo', config.stripe_modo ?? 'test'),
+      ])
+      // Secretas → bóveda (solo si se escribió algo nuevo)
       await saveSecreto('stripe_secret_key')
       await saveSecreto('stripe_webhook_secret')
       setSecretos(s => ({ ...s, stripe_secret_key: '', stripe_webhook_secret: '' }))
-      toast.success('Credenciales de Stripe guardadas')
+      toast.success('Configuración de Stripe guardada')
       load()
     } catch { toast.error('Error al guardar') }
     setSaving(false)
@@ -107,35 +115,81 @@ export default function AdminConfigPage() {
         ))}
       </div>
 
-      {tab === 'pagos' && (
-        <div className="card p-5 space-y-4">
-          <div className="flex items-center gap-2 text-navy-900 font-semibold"><CreditCard className="w-4 h-4 text-primary-600" /> Credenciales de Stripe</div>
+      {tab === 'pagos' && (() => {
+        const configurado = !!estado.stripe_secret_key && !!estado.stripe_webhook_secret && !!(config.stripe_publishable_key)
+        const habilitado = config.stripe_habilitado === 'true'
+        const modoPrueba = (config.stripe_modo ?? 'test') === 'test'
+        const SecretInput = ({ clave, label, ph }: { clave: string; label: string; ph: string }) => (
           <div>
-            <div className="flex items-center justify-between"><label className="label mb-0">Secret Key</label><Estado clave="stripe_secret_key" /></div>
-            <input type="password" className="input mt-1" placeholder="sk_live_... o sk_test_..." value={secretos.stripe_secret_key ?? ''} onChange={setSec('stripe_secret_key')} autoComplete="off" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between"><label className="label mb-0">Webhook Signing Secret (whsec)</label><Estado clave="stripe_webhook_secret" /></div>
-            <input type="password" className="input mt-1" placeholder="whsec_..." value={secretos.stripe_webhook_secret ?? ''} onChange={setSec('stripe_webhook_secret')} autoComplete="off" />
-          </div>
-
-          <div className="rounded-xl bg-fondo p-4 text-sm space-y-2">
-            <p className="font-medium text-navy-900">Configura el webhook en Stripe</p>
-            <p className="text-xs text-slate-500">Developers → Webhooks → Add endpoint. Evento: <code className="text-navy-700">checkout.session.completed</code></p>
-            <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 px-3 py-2">
-              <code className="text-xs text-slate-600 truncate flex-1">{WEBHOOK_URL}</code>
-              <button onClick={() => { navigator.clipboard.writeText(WEBHOOK_URL); toast.success('Copiado') }} className="text-slate-400 hover:text-navy-700"><Copy className="w-4 h-4" /></button>
+            <div className="flex items-center justify-between"><label className="label mb-0">{label}</label><Estado clave={clave} /></div>
+            <div className="relative mt-1">
+              <input type={ver[clave] ? 'text' : 'password'} className="input pr-10" placeholder={ph} value={secretos[clave] ?? ''} onChange={setSec(clave)} autoComplete="off" />
+              <button type="button" onClick={() => setVer(v => ({ ...v, [clave]: !v[clave] }))} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {ver[clave] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
+        )
+        return (
+          <div className="card overflow-hidden">
+            {/* Encabezado del proveedor */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold" style={{ color: '#635BFF' }}>Stripe</span>
+                {configurado && <span className="badge bg-success-50 text-success-600">Activo</span>}
+              </div>
+              <div className="flex items-center gap-4">
+                <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer" className="text-xs text-slate-500 hover:text-navy-700 inline-flex items-center gap-1">Documentación <ExternalLink className="w-3 h-3" /></a>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <span className="text-xs text-slate-500">Habilitado</span>
+                  <button type="button" onClick={() => setConfig(c => ({ ...c, stripe_habilitado: habilitado ? 'false' : 'true' }))}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${habilitado ? 'bg-success-500' : 'bg-slate-300'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${habilitado ? 'left-5' : 'left-0.5'}`} />
+                  </button>
+                </label>
+              </div>
+            </div>
 
-          <div className="flex justify-end">
-            <button onClick={guardarPagos} disabled={saving} className="btn-navy">
-              {saving && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-              <Save className="w-4 h-4" /> Guardar credenciales
-            </button>
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-slate-500">Tarjetas internacionales — Visa, Mastercard, AMEX y más.</p>
+
+              {/* Modo */}
+              <label className="flex items-center gap-2 text-sm text-navy-800 w-fit cursor-pointer">
+                <input type="checkbox" checked={modoPrueba} onChange={e => setConfig(c => ({ ...c, stripe_modo: e.target.checked ? 'test' : 'produccion' }))} className="rounded border-slate-300" />
+                Modo de prueba
+                <span className={`badge ${modoPrueba ? 'bg-amber-50 text-amber-600' : 'bg-primary-50 text-primary-600'}`}>{modoPrueba ? 'Prueba' : 'Producción'}</span>
+              </label>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Llave pública (publishable)</label>
+                  <input className="input" placeholder={modoPrueba ? 'pk_test_...' : 'pk_live_...'} value={config.stripe_publishable_key ?? ''} onChange={setCfg('stripe_publishable_key')} autoComplete="off" />
+                </div>
+                <SecretInput clave="stripe_secret_key" label="Llave secreta" ph={modoPrueba ? 'sk_test_...' : 'sk_live_...'} />
+              </div>
+
+              <SecretInput clave="stripe_webhook_secret" label="Secreto de webhook (whsec)" ph="whsec_..." />
+
+              {/* Webhook endpoint */}
+              <div className="rounded-xl bg-fondo p-4 space-y-2">
+                <p className="text-sm font-medium text-navy-900">Endpoint del webhook</p>
+                <p className="text-xs text-slate-500">En Stripe: Developers → Webhooks → Add endpoint. Evento <code className="text-navy-700">checkout.session.completed</code></p>
+                <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 px-3 py-2">
+                  <code className="text-xs text-slate-600 truncate flex-1">{WEBHOOK_URL}</code>
+                  <button onClick={() => { navigator.clipboard.writeText(WEBHOOK_URL); toast.success('Copiado') }} className="text-slate-400 hover:text-navy-700 inline-flex items-center gap-1 text-xs"><Copy className="w-3.5 h-3.5" /> Copiar</button>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button onClick={guardarPagos} disabled={saving} className="btn-navy">
+                  {saving && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                  <Save className="w-4 h-4" /> Guardar configuración
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {tab === 'notificaciones' && (
         <div className="card p-5 space-y-4">

@@ -4,8 +4,9 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { descargarNotaRemision } from '../../lib/cotizacionPdf'
-import { stripePromise, stripeConfigurado } from '../../lib/stripe'
+import { cargarConfigStripe, instanciaStripe } from '../../lib/stripe'
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
+import type { Stripe } from '@stripe/stripe-js'
 import toast from 'react-hot-toast'
 import { Coins, Check, FileText, X } from 'lucide-react'
 
@@ -24,6 +25,8 @@ export default function FoliosPage() {
   const [loading, setLoading] = useState(true)
   const [checkout, setCheckout] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [stripeCfg, setStripeCfg] = useState<{ pk: string; habilitado: boolean }>({ pk: '', habilitado: false })
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
 
   // Facturación: en México es factura fiscal (CFDI); fuera de México, nota de remisión.
   const esMexico = (empresa?.pais ?? 'MX') === 'MX'
@@ -46,6 +49,8 @@ export default function FoliosPage() {
       .then(({ data }) => { setHistorial(data ?? []); setLoading(false) })
   }
 
+  useEffect(() => { cargarConfigStripe().then(setStripeCfg) }, [])
+
   useEffect(() => {
     supabase.from('paquetes_folios').select('*').eq('activo', true).order('orden')
       .then(({ data }) => setPaquetes(data && data.length ? data : PAQUETES_FALLBACK))
@@ -58,7 +63,7 @@ export default function FoliosPage() {
 
   const handleCompra = async (p: any) => {
     if (!user) return
-    if (!stripeConfigurado) {
+    if (!stripeCfg.habilitado || !stripeCfg.pk) {
       toast('Pagos en línea aún no activados. Escríbenos para tu link de pago.', { icon: '💬', duration: 6000 })
       return
     }
@@ -72,7 +77,10 @@ export default function FoliosPage() {
         body: JSON.stringify({ folios: p.folios, paquete_nombre: p.nombre, precio: p.precio }),
       })
       const data = await res.json().catch(() => ({}))
-      if (data.clientSecret) setClientSecret(data.clientSecret)
+      if (data.clientSecret) {
+        setStripePromise(instanciaStripe(stripeCfg.pk))
+        setClientSecret(data.clientSecret)
+      }
       else toast.error(data.error ?? 'No se pudo iniciar el pago')
     } catch {
       toast.error('Error al conectar con el sistema de pagos')
