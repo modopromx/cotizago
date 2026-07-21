@@ -39,3 +39,27 @@ export async function enviarCotizacionPorEmail(cotId: string, vendedor?: string)
   if (!res.ok) throw new Error(data?.error ?? 'No se pudo enviar el correo')
   return data
 }
+
+// Avisa al usuario cuando su saldo de folios queda bajo o se agota.
+// Es "dispara y olvida": nunca debe interrumpir el flujo de la cotización.
+export async function avisarSaldoFolios(saldo: number, email?: string, nombre?: string) {
+  if (!email) return
+  const clave = saldo <= 0 ? 'folios_terminados' : saldo <= 3 ? 'recordatorio_recarga' : null
+  if (!clave) return
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({
+        clave, para: email,
+        variables: {
+          nombre: nombre ?? '',
+          folios_restantes: String(saldo),
+          link_recarga: `${window.location.origin}/app/folios`,
+        },
+      }),
+    })
+  } catch { /* silencioso */ }
+}

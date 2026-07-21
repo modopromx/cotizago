@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency } from '../../lib/utils'
+import { avisarSaldoFolios } from '../../lib/envios'
 import toast from 'react-hot-toast'
 import { Plus, Trash2, Save, ArrowLeft, Search } from 'lucide-react'
 
@@ -117,6 +118,9 @@ export default function NuevaCotizacionPage() {
         return
       }
       await refreshProfile()
+      // Aviso automático si el saldo quedó bajo o se agotó.
+      const { data: p } = await supabase.from('profiles').select('folios_balance,email,nombre').eq('id', user.id).single()
+      if (p) avisarSaldoFolios(p.folios_balance ?? 0, p.email, p.nombre ?? undefined)
     }
 
     toast.success(estado === 'enviada' ? 'Cotización enviada ✓' : 'Borrador guardado')
