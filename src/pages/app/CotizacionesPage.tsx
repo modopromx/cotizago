@@ -4,8 +4,9 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { descargarCotizacion } from '../../lib/cotizacionPdf'
+import { llenarPlantilla, abrirWhatsApp } from '../../lib/plantillas'
 import toast from 'react-hot-toast'
-import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink, Download } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink, Download, Copy, Ban } from 'lucide-react'
 
 const ESTADO_BADGE: Record<string, string> = {
   aceptada: 'bg-success-50 text-success-600',
@@ -32,21 +33,30 @@ const TABS = [
 const esPendiente = (e: string) => ['enviada', 'vista', 'pendiente'].includes(e)
 
 export default function CotizacionesPage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [cotizaciones, setCotizaciones] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [tab, setTab] = useState('todas')
 
+  const [plantillaWA, setPlantillaWA] = useState<string>('')
+
   const load = async () => {
     if (!user) return
     const { data } = await supabase.from('cotizaciones')
-      .select('id,numero,estado,total,moneda,updated_at,cliente_nombre,cliente_empresa,token')
+      .select('id,numero,estado,total,moneda,updated_at,cliente_nombre,cliente_empresa,cliente_whatsapp,token')
       .order('updated_at', { ascending: false })
     setCotizaciones(data ?? [])
     setLoading(false)
   }
   useEffect(() => { load() }, [user])
+
+  useEffect(() => {
+    if (!profile?.workspace_id) return
+    supabase.from('plantillas_mensajes').select('cuerpo')
+      .eq('workspace_id', profile.workspace_id).eq('canal', 'whatsapp').eq('momento', 'envio_inicial').maybeSingle()
+      .then(({ data }) => setPlantillaWA(data?.cuerpo ?? 'Hola {{cliente}}, te comparto la cotización {{folio}} por {{total}}: {{enlace_publico}}'))
+  }, [profile?.workspace_id])
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta cotización?')) return
@@ -61,6 +71,38 @@ export default function CotizacionesPage() {
     const t = toast.loading('Generando PDF...')
     try { await descargarCotizacion(id); toast.success('PDF descargado', { id: t }) }
     catch { toast.error('No se pudo generar el PDF', { id: t }) }
+  }
+  const handleWhatsApp = (c: any) => {
+    const enlace = `${window.location.origin}/c/${c.token}`
+    const msg = llenarPlantilla(plantillaWA, {
+      cliente: c.cliente_nombre || 'Hola', folio: c.numero,
+      total: formatCurrency(c.total, c.moneda), empresa: profile?.empresa ?? profile?.nombre ?? '',
+      enlace_publico: enlace, vendedor: profile?.nombre ?? '',
+    })
+    abrirWhatsApp(msg, c.cliente_whatsapp)
+  }
+  const handleDuplicar = async (id: string) => {
+    if (!user) return
+    const { data: orig } = await supabase.from('cotizaciones').select('*').eq('id', id).single()
+    if (!orig) return
+    const { data: items } = await supabase.from('cotizacion_items').select('*').eq('cotizacion_id', id).order('orden')
+    const numero = await supabase.rpc('generate_cotizacion_number', { user_uuid: user.id })
+    const { id: _id, created_at, updated_at, token, numero: _n, estado, folio_consumido, enviada_at, visto_at, visto_count, ...resto } = orig
+    const { data: nueva, error } = await supabase.from('cotizaciones')
+      .insert({ ...resto, numero: numero.data, estado: 'borrador', folio_consumido: false })
+      .select('id').single()
+    if (error || !nueva) { toast.error('No se pudo duplicar'); return }
+    if (items?.length) {
+      await supabase.from('cotizacion_items').insert(
+        items.map(({ id: _i, cotizacion_id, created_at: _c, ...it }) => ({ ...it, cotizacion_id: nueva.id }))
+      )
+    }
+    toast.success('Cotización duplicada como borrador'); load()
+  }
+  const handleCancelar = async (id: string) => {
+    if (!confirm('¿Cancelar esta cotización? No se podrá volver a enviar.')) return
+    await supabase.from('cotizaciones').update({ estado: 'cancelada' }).eq('id', id)
+    toast.success('Cotización cancelada'); load()
   }
 
   const filtered = cotizaciones.filter(c => {
@@ -135,10 +177,12 @@ export default function CotizacionesPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => handlePDF(c.id)} title="Descargar PDF" className="p-1.5 text-slate-400 hover:text-navy-700 hover:bg-slate-100 rounded-lg"><Download className="w-3.5 h-3.5" /></button>
-                        <a href={`/c/${c.token}`} target="_blank" rel="noreferrer" title="Ver pública" className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><ExternalLink className="w-3.5 h-3.5" /></a>
+                        <button onClick={() => handleWhatsApp(c)} title="Enviar por WhatsApp" className="p-1.5 text-slate-400 hover:text-success-600 hover:bg-success-50 rounded-lg"><MessageCircle className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleCopy(c.token)} title="Copiar enlace" className="p-1.5 text-slate-400 hover:text-azul-600 hover:bg-azul-50 rounded-lg"><Link2 className="w-3.5 h-3.5" /></button>
-                        <a href={`https://wa.me/?text=${encodeURIComponent(window.location.origin + '/c/' + c.token)}`} target="_blank" rel="noreferrer" title="WhatsApp" className="p-1.5 text-slate-400 hover:text-success-600 hover:bg-success-50 rounded-lg"><MessageCircle className="w-3.5 h-3.5" /></a>
+                        <a href={`/c/${c.token}`} target="_blank" rel="noreferrer" title="Ver pública" className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><ExternalLink className="w-3.5 h-3.5" /></a>
                         <Link to={`/app/cotizaciones/${c.id}/editar`} title="Editar" className="p-1.5 text-slate-400 hover:text-navy-700 hover:bg-slate-100 rounded-lg"><Edit2 className="w-3.5 h-3.5" /></Link>
+                        <button onClick={() => handleDuplicar(c.id)} title="Duplicar" className="p-1.5 text-slate-400 hover:text-navy-700 hover:bg-slate-100 rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
+                        {c.estado !== 'cancelada' && <button onClick={() => handleCancelar(c.id)} title="Cancelar" className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"><Ban className="w-3.5 h-3.5" /></button>}
                         <button onClick={() => handleDelete(c.id)} title="Eliminar" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     </td>
