@@ -159,15 +159,26 @@ export async function buildCotizacionPDF(d: CotizacionPDFData): Promise<jsPDF> {
     if (c.terminos) { doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(150, 160, 170); doc.text('TÉRMINOS', MARGEN, y); doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(90, 100, 110); doc.text(doc.splitTextToSize(c.terminos, CONTENIDO), MARGEN, y + 4); y += 4 + doc.splitTextToSize(c.terminos, CONTENIDO).length * 4 + 3 }
   }
 
-  // Datos de pago
+  // Datos de pago (una línea por dato, en dos columnas)
   if (em.banco || em.clabe || em.link_pago) {
-    doc.setFillColor(246, 249, 251).roundedRect(MARGEN, y, CONTENIDO, 20, 2, 2, 'F')
+    const pay = [
+      em.banco && `Banco: ${em.banco}`,
+      em.titular && `Titular: ${em.titular}`,
+      em.clabe && `CLABE: ${em.clabe}`,
+      em.link_pago && `Pago en línea: ${em.link_pago}`,
+    ].filter(Boolean) as string[]
+    const filas = Math.ceil(pay.length / 2)
+    const alto = 12 + filas * 5
+    doc.setFillColor(246, 249, 251).roundedRect(MARGEN, y, CONTENIDO, alto, 2, 2, 'F')
     doc.setFontSize(8).setFont('helvetica', 'bold').setTextColor(120, 130, 140)
     doc.text('DATOS DE PAGO', MARGEN + 4, y + 6)
     doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(70, 80, 90)
-    const pay = [em.banco && `Banco: ${em.banco}`, em.titular && `Titular: ${em.titular}`, em.clabe && `CLABE: ${em.clabe}`, em.link_pago && `Pago en línea: ${em.link_pago}`].filter(Boolean) as string[]
-    pay.forEach((l, i) => doc.text(l, MARGEN + 4, y + 11 + (i % 2) * 4.5 + Math.floor(i / 2) * 0))
-    y += 24
+    const colX = [MARGEN + 4, MARGEN + CONTENIDO / 2 + 2]
+    pay.forEach((l, i) => {
+      const col = i % 2, row = Math.floor(i / 2)
+      doc.text(l, colX[col], y + 12 + row * 5)
+    })
+    y += alto + 4
   }
 
   // Pie
