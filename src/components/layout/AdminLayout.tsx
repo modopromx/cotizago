@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import Logo from '../Logo'
 import {
   LayoutDashboard, Users, FileText, CreditCard, Package2, Blocks,
-  LifeBuoy, UserCog, ScrollText, Settings, LogOut, Menu, X, ArrowLeft,
+  LifeBuoy, UserCog, ScrollText, Settings, LogOut, Menu, X, ArrowLeft, Mail,
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -15,6 +15,7 @@ const adminNav = [
   { to: '/admin/pagos', label: 'Pagos y cobros', icon: CreditCard },
   { to: '/admin/paquetes', label: 'Paquetes de folios', icon: Package2 },
   { to: '/admin/clientes', label: 'Clientes', icon: Blocks },
+  { to: '/admin/email-templates', label: 'Plantillas email', icon: Mail },
   { to: '/admin/soporte', label: 'Soporte', icon: LifeBuoy },
   { to: '/admin/equipo', label: 'Equipo', icon: UserCog },
   { to: '/admin/logs', label: 'Auditoría', icon: ScrollText },

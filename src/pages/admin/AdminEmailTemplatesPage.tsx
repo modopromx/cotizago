@@ -1,215 +1,147 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import toast from 'react-hot-toast'
-import { Save, Mail, Eye, ChevronDown, ChevronUp, Code } from 'lucide-react'
+import { UserPlus, Zap, AlertTriangle, CheckCircle2, FileText, Eye, Pencil, Send, X, Save } from 'lucide-react'
 
-interface EmailTemplate {
-  id: string
-  nombre: string
-  asunto: string
-  cuerpo_html: string
-  variables_disponibles: string[]
-  updated_at: string
+interface Plantilla { id: string; clave: string; asunto: string; cuerpo: string; variables: string[] }
+
+const META: Record<string, { nombre: string; icon: any; color: string }> = {
+  bienvenida: { nombre: 'Bienvenida de usuario nuevo', icon: UserPlus, color: 'text-primary-600 bg-primary-50' },
+  recordatorio_recarga: { nombre: 'Recordatorio de recarga', icon: Zap, color: 'text-amber-600 bg-amber-50' },
+  folios_terminados: { nombre: 'Folios terminados', icon: AlertTriangle, color: 'text-red-600 bg-red-50' },
+  recarga_exitosa: { nombre: 'Recarga de folios exitosa', icon: CheckCircle2, color: 'text-success-600 bg-success-50' },
+  cotizacion_enviada: { nombre: 'Envío de cotización (PDF)', icon: FileText, color: 'text-azul-600 bg-azul-50' },
 }
 
-const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
-  bienvenida: 'Se envía cuando un nuevo usuario se registra en CotizaGo.',
-  cotizacion_enviada: 'Se envía al cliente cuando le compartes una cotización.',
-  cotizacion_aceptada: 'Notificación al vendedor cuando el cliente acepta la cotización.',
-  pago_exitoso: 'Confirmación de compra de folios vía Stripe.',
+// Valores de ejemplo para la vista previa
+const EJEMPLO: Record<string, string> = {
+  nombre: 'Alan Velázquez', email: 'alan@empresa.mx', folios: '5', plataforma: 'Cotiza Go',
+  folios_restantes: '3', link_recarga: 'https://cotiza.go/app/folios',
+  referencia: 'REC-10842', paquete: 'Negocio', folios_acreditados: '100', monto: '$499.00',
+  fecha: '20 jul 2026', saldo_actual: '103',
+  cliente: 'Mariana López', empresa: 'Áurea Visual Studio', folio: 'CTZ-0027', total: '$21,402.00',
+  enlace_publico: 'https://cotiza.go/c/abc123', vigencia: '15 días',
+  empresa_telefono: '+52 55 1234 5678', empresa_email: 'contacto@aurea.mx', vendedor: 'Alan Velázquez',
 }
-
-const TEMPLATE_ICONS: Record<string, string> = {
-  bienvenida: '👋',
-  cotizacion_enviada: '📄',
-  cotizacion_aceptada: '✅',
-  pago_exitoso: '💳',
-}
+const render = (txt: string) => txt.replace(/\{\{(\w+)\}\}/g, (_, k) => EJEMPLO[k] ?? `{{${k}}}`)
 
 export default function AdminEmailTemplatesPage() {
-  const [templates, setTemplates] = useState<EmailTemplate[]>([])
+  const [plantillas, setPlantillas] = useState<Plantilla[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
-  const [edited, setEdited] = useState<Record<string, Partial<EmailTemplate>>>({})
+  const [editar, setEditar] = useState<Plantilla | null>(null)
+  const [preview, setPreview] = useState<Plantilla | null>(null)
+  const [draft, setDraft] = useState({ asunto: '', cuerpo: '' })
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    supabase.from('email_templates').select('*').order('nombre').then(({ data }) => {
-      setTemplates(data ?? [])
-      setLoading(false)
-      if (data?.length) setExpanded(data[0].id)
-    })
-  }, [])
+  const orden = ['bienvenida', 'recordatorio_recarga', 'folios_terminados', 'recarga_exitosa', 'cotizacion_enviada']
 
-  const get = (id: string, field: keyof EmailTemplate) =>
-    (edited[id]?.[field] as string) ?? (templates.find(t => t.id === id)?.[field] as string) ?? ''
+  const load = async () => {
+    const { data } = await supabase.from('email_templates').select('*')
+    const list = (data ?? []).sort((a, b) => orden.indexOf(a.clave) - orden.indexOf(b.clave))
+    setPlantillas(list)
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [])
 
-  const set = (id: string, field: keyof EmailTemplate, val: string) =>
-    setEdited(e => ({ ...e, [id]: { ...(e[id] ?? {}), [field]: val } }))
+  const abrirEditar = (p: Plantilla) => { setEditar(p); setDraft({ asunto: p.asunto, cuerpo: p.cuerpo }) }
 
-  const save = async (t: EmailTemplate) => {
-    setSaving(t.id)
-    const updates = edited[t.id] ?? {}
-    const { error } = await supabase.from('email_templates').update({
-      asunto: updates.asunto ?? t.asunto,
-      cuerpo_html: updates.cuerpo_html ?? t.cuerpo_html,
-      updated_at: new Date().toISOString(),
-    }).eq('id', t.id)
-
-    if (error) {
-      toast.error('Error guardando plantilla')
-    } else {
-      toast.success(`Plantilla "${t.nombre}" guardada`)
-      // Refrescar
-      const { data } = await supabase.from('email_templates').select('*').order('nombre')
-      setTemplates(data ?? [])
-      setEdited(e => { const n = { ...e }; delete n[t.id]; return n })
-    }
-    setSaving(null)
+  const guardar = async () => {
+    if (!editar) return
+    setSaving(true)
+    const { error } = await supabase.from('email_templates')
+      .update({ asunto: draft.asunto, cuerpo: draft.cuerpo, updated_at: new Date().toISOString() }).eq('id', editar.id)
+    if (error) toast.error('Error al guardar')
+    else { toast.success('Plantilla guardada'); setEditar(null); load() }
+    setSaving(false)
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  if (loading) return <div className="card p-8 text-center text-slate-500 text-sm">Cargando...</div>
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Plantillas de Email</h1>
-        <p className="text-slate-500 text-sm">Personaliza los correos automáticos que envía CotizaGo</p>
+        <h1 className="text-2xl font-bold text-navy-900">Plantillas de email</h1>
+        <p className="text-slate-500 text-sm">Gestiona los correos automáticos del sistema.</p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-        <p className="text-xs text-blue-700 font-semibold mb-1">Variables disponibles en HTML</p>
-        <p className="text-xs text-blue-600">
-          Puedes usar variables como <code className="bg-blue-100 px-1 rounded">{'{{nombre}}'}</code>,{' '}
-          <code className="bg-blue-100 px-1 rounded">{'{{empresa}}'}</code>,{' '}
-          <code className="bg-blue-100 px-1 rounded">{'{{link}}'}</code>,{' '}
-          <code className="bg-blue-100 px-1 rounded">{'{{total}}'}</code> que se reemplazan al enviar.
-          Cada plantilla tiene sus propias variables listadas abajo.
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {templates.map(t => {
-          const isOpen = expanded === t.id
-          const isDirty = !!edited[t.id]
-          const icon = TEMPLATE_ICONS[t.nombre] ?? '📧'
-          const desc = TEMPLATE_DESCRIPTIONS[t.nombre] ?? ''
-          const vars = t.variables_disponibles ?? []
-
+      <div className="grid lg:grid-cols-2 gap-4">
+        {plantillas.map(p => {
+          const m = META[p.clave] ?? { nombre: p.clave, icon: FileText, color: 'text-slate-600 bg-slate-100' }
+          const Icon = m.icon
           return (
-            <div key={t.id} className={`card overflow-hidden ${isDirty ? 'ring-2 ring-primary-300' : ''}`}>
-              {/* Header */}
-              <button
-                onClick={() => setExpanded(isOpen ? null : t.id)}
-                className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-50 transition-colors"
-              >
-                <span className="text-xl">{icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-slate-800 text-sm capitalize">
-                      {t.nombre.replace(/_/g, ' ')}
-                    </p>
-                    {isDirty && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                        Sin guardar
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-0.5 truncate">{desc}</p>
+            <div key={p.id} className="card p-5">
+              <div className="flex items-start gap-3 mb-3">
+                <span className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}><Icon className="w-4 h-4" /></span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-navy-900">{m.nombre}</p>
+                  <p className="text-xs text-slate-400 truncate">{p.asunto}</p>
                 </div>
-                {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-              </button>
-
-              {/* Body */}
-              {isOpen && (
-                <div className="px-5 pb-5 space-y-4 border-t border-slate-100 pt-4">
-                  {/* Variables */}
-                  {vars.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {vars.map(v => (
-                        <span key={v} className="text-xs font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
-                          {`{{${v}}}`}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Asunto */}
-                  <div>
-                    <label className="label">Asunto del correo</label>
-                    <input
-                      className="input"
-                      value={get(t.id, 'asunto')}
-                      onChange={e => set(t.id, 'asunto', e.target.value)}
-                      placeholder="Asunto del email..."
-                    />
-                  </div>
-
-                  {/* Cuerpo HTML */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="label mb-0">Cuerpo HTML</label>
-                      <button
-                        onClick={() => setPreviewHtml(get(t.id, 'cuerpo_html'))}
-                        className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                      >
-                        <Eye className="w-3 h-3" /> Vista previa
-                      </button>
-                    </div>
-                    <textarea
-                      rows={14}
-                      className="input font-mono text-xs resize-y leading-relaxed"
-                      value={get(t.id, 'cuerpo_html')}
-                      onChange={e => set(t.id, 'cuerpo_html', e.target.value)}
-                    />
-                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                      <Code className="w-3 h-3" /> HTML completo — puedes usar estilos inline para compatibilidad con email
-                    </p>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => save(t)}
-                      disabled={saving === t.id}
-                      className="btn-primary"
-                    >
-                      {saving === t.id
-                        ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        : <Save className="w-4 h-4" />
-                      }
-                      Guardar plantilla
-                    </button>
-                  </div>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-fondo/60 p-3 h-36 overflow-y-auto text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+                {p.cuerpo}
+              </div>
+              <div className="mt-3">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">Variables disponibles</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(p.variables ?? []).map(v => <span key={v} className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-500">{`{{${v}}}`}</span>)}
                 </div>
-              )}
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <button onClick={() => setPreview(p)} className="btn-secondary justify-center text-xs"><Eye className="w-3.5 h-3.5" /> Vista previa</button>
+                <button onClick={() => abrirEditar(p)} className="btn-secondary justify-center text-xs"><Pencil className="w-3.5 h-3.5" /> Editar</button>
+                <button onClick={() => toast('Envío de prueba disponible al conectar el email', { icon: '📨' })} className="btn-secondary justify-center text-xs"><Send className="w-3.5 h-3.5" /> Prueba</button>
+              </div>
             </div>
           )
         })}
       </div>
 
-      {/* Preview modal */}
-      {previewHtml && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-primary-600" />
-                <span className="font-semibold text-slate-800">Vista previa del email</span>
-              </div>
-              <button onClick={() => setPreviewHtml(null)} className="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+      {/* Modal editar */}
+      {editar && (
+        <div className="fixed inset-0 bg-navy-950/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h2 className="font-bold text-navy-900">Editar: {META[editar.clave]?.nombre ?? editar.clave}</h2>
+              <button onClick={() => setEditar(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
-            <div className="flex-1 overflow-auto p-4">
-              <iframe
-                srcDoc={previewHtml}
-                className="w-full h-full min-h-96 border-0 rounded-lg bg-white"
-                title="Email preview"
-                sandbox="allow-same-origin"
-              />
+            <div className="p-5 space-y-3">
+              <div><label className="label">Asunto</label><input className="input" value={draft.asunto} onChange={e => setDraft(d => ({ ...d, asunto: e.target.value }))} /></div>
+              <div><label className="label">Cuerpo</label><textarea className="input resize-none font-mono text-xs leading-relaxed" rows={12} value={draft.cuerpo} onChange={e => setDraft(d => ({ ...d, cuerpo: e.target.value }))} /></div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">Variables</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(editar.variables ?? []).map(v => (
+                    <button key={v} type="button" onClick={() => setDraft(d => ({ ...d, cuerpo: d.cuerpo + `{{${v}}}` }))} className="text-[11px] font-mono px-2 py-0.5 rounded bg-fondo text-navy-700 hover:bg-primary-100">{`{{${v}}}`}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setEditar(null)} className="btn-secondary flex-1 justify-center">Cancelar</button>
+                <button onClick={guardar} disabled={saving} className="btn-navy flex-1 justify-center">
+                  {saving ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-4 h-4" />} Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal vista previa */}
+      {preview && (
+        <div className="fixed inset-0 bg-navy-950/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h2 className="font-bold text-navy-900">Vista previa</h2>
+              <button onClick={() => setPreview(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5">
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <div className="bg-fondo px-4 py-2 border-b border-slate-200">
+                  <p className="text-[11px] text-slate-400">Asunto</p>
+                  <p className="text-sm font-medium text-navy-900">{render(preview.asunto)}</p>
+                </div>
+                <p className="p-4 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{render(preview.cuerpo)}</p>
+              </div>
             </div>
           </div>
         </div>
