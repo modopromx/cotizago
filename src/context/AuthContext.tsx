@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { supabase, isAdmin } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 
 interface Profile {
   id: string
@@ -78,7 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const isAdminUser = user ? isAdmin(user.email ?? '') : false
+  // El rol de admin vive en la base (profiles.is_admin), no en una lista de emails.
+  const isAdminUser = profile?.is_admin === true
 
   return (
     <AuthContext.Provider value={{ user, session, profile, loading, isAdminUser, refreshProfile, signOut }}>

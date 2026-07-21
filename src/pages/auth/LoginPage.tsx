@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import Logo from '../../components/Logo'
 import toast from 'react-hot-toast'
-import { FileText, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -14,12 +15,16 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       toast.error(error.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos' : error.message)
-    } else {
-      navigate('/app')
+      setLoading(false)
+      return
     }
+    // Redirige según el rol (admin → panel de control). Se consulta directo para
+    // no depender de que el profile del contexto ya haya cargado.
+    const { data: prof } = await supabase.from('profiles').select('is_admin').eq('id', data.user!.id).single()
+    navigate(prof?.is_admin ? '/admin' : '/app')
     setLoading(false)
   }
 
@@ -27,15 +32,12 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-primary-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-3 text-white mb-2">
-            <img src="/logo-icon.svg" width={38} height={45} alt="CotizaGo" />
-            <span className="text-2xl font-extrabold tracking-tight">CotizaGo</span>
-          </div>
-          <p className="text-navy-300 text-sm">Cotizaciones profesionales en minutos</p>
+          <div className="inline-flex mb-2"><Logo variant="white" className="h-10" /></div>
+          <p className="text-primary-200 text-sm">Cotizaciones profesionales en minutos</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h1 className="text-xl font-bold text-slate-800 mb-6">Iniciar sesión</h1>
+          <h1 className="text-xl font-bold text-navy-900 mb-6">Iniciar sesión</h1>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">Correo electrónico</label>
