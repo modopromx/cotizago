@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatDate, ESTADO_LABELS } from '../../lib/utils'
-import { FileText, CheckCircle, XCircle, Eye, MapPin, Calendar, Phone, Mail } from 'lucide-react'
+import { buildCotizacionPDF, descargarPDF } from '../../lib/pdf'
+import toast from 'react-hot-toast'
+import { FileText, CheckCircle, XCircle, Eye, MapPin, Calendar, Phone, Mail, Download } from 'lucide-react'
 
 export default function CotizacionPublicaPage() {
   const { token } = useParams()
@@ -36,6 +38,16 @@ export default function CotizacionPublicaPage() {
     await supabase.rpc('responder_cotizacion', { cotizacion_token: token, respuesta_cliente: resp })
     setRespondida(true)
     setCot((c: any) => ({ ...c, estado: resp }))
+  }
+
+  const handleDescargarPDF = async () => {
+    if (!cot) return
+    const t = toast.loading('Generando PDF...')
+    try {
+      const doc = await buildCotizacionPDF({ emisor: profile ?? {}, cotizacion: cot, items, publicUrl: window.location.href })
+      descargarPDF(doc, `${cot.numero || 'cotizacion'}.pdf`)
+      toast.success('PDF descargado', { id: t })
+    } catch { toast.error('No se pudo generar el PDF', { id: t }) }
   }
 
   if (loading) return (
@@ -208,7 +220,17 @@ export default function CotizacionPublicaPage() {
                 <XCircle className="w-5 h-5" /> Rechazar
               </button>
             </div>
+            <button onClick={handleDescargarPDF} className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-all">
+              <Download className="w-4 h-4" /> Descargar PDF
+            </button>
           </div>
+        )}
+
+        {/* Descarga siempre disponible (aunque ya haya respondido) */}
+        {(respondida || cot.estado === 'aceptada' || cot.estado === 'rechazada') && (
+          <button onClick={handleDescargarPDF} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-medium text-slate-600 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 transition-all">
+            <Download className="w-4 h-4" /> Descargar PDF
+          </button>
         )}
 
         {respondida && (

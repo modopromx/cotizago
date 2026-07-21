@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
+import { descargarNotaRemision } from '../../lib/cotizacionPdf'
 import toast from 'react-hot-toast'
 import { Coins, Check, FileText } from 'lucide-react'
 
@@ -72,15 +73,38 @@ export default function FoliosPage() {
       toast.error(`Agrega tu RFC / ID fiscal en "Mi empresa" para solicitar tu ${docFiscal}.`)
       return
     }
+
+    // Nota de remisión (fuera de México): NO es fiscal, se genera al instante.
+    if (!esMexico) {
+      const t = toast.loading('Generando nota de remisión...')
+      try {
+        await descargarNotaRemision({
+          folio: `NR-${(pago.id as string).slice(0, 8).toUpperCase()}`,
+          fecha: pago.created_at,
+          receptor: { nombre: empresa?.razon_social ?? empresa?.nombre_comercial, rfc: empresa?.rfc, pais: empresa?.pais },
+          concepto: `${pago.paquete_nombre ?? 'Recarga de folios'} · ${pago.folios_cantidad ?? 0} folios`,
+          monto: pago.monto, moneda: pago.moneda ?? 'MXN',
+        })
+        await supabase.from('facturas_solicitudes').insert({
+          user_id: user.id, pago_id: pago.id, monto: pago.monto, estado: 'emitida',
+          tipo: 'nota_remision', pais: empresa?.pais ?? null,
+          rfc: empresa?.rfc ?? null, razon_social: empresa?.razon_social ?? empresa?.nombre_comercial ?? null,
+        })
+        toast.success('Nota de remisión generada y descargada', { id: t })
+        loadHistorial()
+      } catch { toast.error('No se pudo generar la nota de remisión', { id: t }) }
+      return
+    }
+
+    // Factura fiscal (México): la emite administración con CFDI (PDF + XML).
     const { error } = await supabase.from('facturas_solicitudes').insert({
       user_id: user.id, pago_id: pago.id, monto: pago.monto, estado: 'pendiente',
-      tipo: esMexico ? 'factura' : 'nota_remision',
-      pais: empresa?.pais ?? 'MX',
+      tipo: 'factura', pais: 'MX',
       rfc: empresa?.rfc ?? null,
       razon_social: empresa?.razon_social ?? empresa?.nombre_comercial ?? null,
     })
     if (error) toast.error('No se pudo solicitar')
-    else { toast.success(`Solicitud de ${docFiscal} enviada. Te avisaremos cuando esté lista.`); loadHistorial() }
+    else { toast.success('Solicitud de factura enviada. Te avisaremos cuando esté lista.'); loadHistorial() }
   }
 
   return (

@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
+import { descargarCotizacion } from '../../lib/cotizacionPdf'
 import toast from 'react-hot-toast'
-import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink, Download } from 'lucide-react'
 
 const ESTADO_BADGE: Record<string, string> = {
   aceptada: 'bg-success-50 text-success-600',
@@ -55,6 +56,11 @@ export default function CotizacionesPage() {
   const handleCopy = (token: string) => {
     navigator.clipboard.writeText(`${window.location.origin}/c/${token}`)
     toast.success('Enlace copiado')
+  }
+  const handlePDF = async (id: string) => {
+    const t = toast.loading('Generando PDF...')
+    try { await descargarCotizacion(id); toast.success('PDF descargado', { id: t }) }
+    catch { toast.error('No se pudo generar el PDF', { id: t }) }
   }
 
   const filtered = cotizaciones.filter(c => {
@@ -128,6 +134,7 @@ export default function CotizacionesPage() {
                     <td className="px-4 py-3 text-slate-500">{formatDate(c.updated_at)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => handlePDF(c.id)} title="Descargar PDF" className="p-1.5 text-slate-400 hover:text-navy-700 hover:bg-slate-100 rounded-lg"><Download className="w-3.5 h-3.5" /></button>
                         <a href={`/c/${c.token}`} target="_blank" rel="noreferrer" title="Ver pública" className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg"><ExternalLink className="w-3.5 h-3.5" /></a>
                         <button onClick={() => handleCopy(c.token)} title="Copiar enlace" className="p-1.5 text-slate-400 hover:text-azul-600 hover:bg-azul-50 rounded-lg"><Link2 className="w-3.5 h-3.5" /></button>
                         <a href={`https://wa.me/?text=${encodeURIComponent(window.location.origin + '/c/' + c.token)}`} target="_blank" rel="noreferrer" title="WhatsApp" className="p-1.5 text-slate-400 hover:text-success-600 hover:bg-success-50 rounded-lg"><MessageCircle className="w-3.5 h-3.5" /></a>
