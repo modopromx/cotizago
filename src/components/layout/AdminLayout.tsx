@@ -43,7 +43,7 @@ export default function AdminLayout() {
   // JSX en variable, no componente en el render (evita re-montajes).
   const sidebar = (
     <div className="flex flex-col h-full">
-      <div className="px-2 pt-1 pb-4"><Logo variant="white" className="h-9" /></div>
+      <div className="px-2 pt-1 pb-4"><Logo variant="chip" className="h-8" /></div>
       <div className="px-3 pb-4 mb-2 border-b border-[#20304A]">
         <p className="text-[10px] font-semibold tracking-widest text-[#3FD4C7] uppercase">Control central</p>
         <p className="text-sm font-bold text-white mt-0.5">Superadministrador</p>

@@ -53,9 +53,9 @@ export default function AppLayout() {
   // desmonta y vuelve a montar el menú en cada actualización.
   const sidebar = (
     <div className="flex flex-col h-full">
-      {/* Logo (blanco sobre fondo oscuro) */}
+      {/* Logo a color en placa blanca (se lee sobre el navy del menú) */}
       <div className="px-2 pt-1 pb-6">
-        <Logo variant="white" className="h-9" />
+        <Logo variant="chip" className="h-8" />
       </div>
 
       {/* Datos del usuario */}

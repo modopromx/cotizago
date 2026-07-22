@@ -32,7 +32,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-primary-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex mb-2"><Logo variant="white" className="h-10" /></div>
+          <div className="inline-flex mb-3"><Logo variant="chip" className="h-9" /></div>
           <p className="text-primary-200 text-sm">Cotizaciones profesionales en minutos</p>
         </div>
 

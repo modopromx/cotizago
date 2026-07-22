@@ -92,7 +92,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex mb-2 hover:opacity-80 transition-opacity"><Logo variant="white" className="h-10" /></Link>
+          <Link to="/" className="inline-flex mb-3 hover:opacity-80 transition-opacity"><Logo variant="chip" className="h-9" /></Link>
           <p className="text-slate-400 text-sm mt-1">La forma más rápida de cotizar en LATAM</p>
         </div>
 
