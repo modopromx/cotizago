@@ -18,7 +18,6 @@ export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // Plan seleccionado desde landing
   const planNombre = searchParams.get('nombre') ?? ''
   const planFolios = parseInt(searchParams.get('folios') ?? '0')
   const planPrecio = parseInt(searchParams.get('precio') ?? '0')
@@ -42,26 +41,19 @@ export default function RegisterPage() {
       return
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-    })
-
+    const { data, error } = await supabase.auth.signUp({ email: form.email, password: form.password })
     if (error) {
       toast.error(error.message === 'User already registered' ? 'Este correo ya está registrado' : error.message)
       setLoading(false)
       return
     }
 
-    // Actualizar perfil con los datos del registro.
     if (data.user) {
       await supabase.from('profiles').update({
-        nombre: form.nombre,
-        empresa: form.empresa,
-        telefono: form.telefono,
+        nombre: form.nombre, empresa: form.empresa, telefono: form.telefono,
       }).eq('id', data.user.id)
 
-      // Correo de bienvenida (si el admin ya configuró el servicio; si no, se ignora).
+      // Correo de bienvenida (si hay sesión; con confirmación de correo desactivada, siempre la hay).
       if (data.session) {
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enviar-email`, {
           method: 'POST',
@@ -75,57 +67,46 @@ export default function RegisterPage() {
     }
 
     if (hasPlan && planPriceId) {
-      // Redirigir a Stripe Checkout
       toast.success('¡Cuenta creada! Redirigiendo al pago...')
-      // Por ahora redirigir al app — cuando Stripe esté configurado, se redirige a checkout
-      setTimeout(() => navigate(`/app?pago_pendiente=true&plan=${planPriceId}`), 1500)
+      setTimeout(() => navigate(`/app?pago_pendiente=true&plan=${planPriceId}`), 1200)
     } else {
-      toast.success('¡Cuenta creada! Bienvenido a CotizaGo.')
+      toast.success('¡Cuenta creada! Bienvenido a Cotiza Go.')
       navigate('/app')
     }
-
     setLoading(false)
   }
 
+  const inputClass = 'w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent'
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex mb-3 hover:opacity-80 transition-opacity"><Logo variant="chip" className="h-9" /></Link>
-          <p className="text-slate-400 text-sm mt-1">La forma más rápida de cotizar en LATAM</p>
-        </div>
-
-        {/* Plan seleccionado */}
-        {hasPlan && (
-          <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4 mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Zap className="w-4 h-4 text-white" />
-              </div>
-              <div className="flex-1">
-                <p className="text-white font-semibold text-sm">Has seleccionado: {planNombre}</p>
-                <p className="text-primary-300 text-xs">{planFolios} folios · ${planPrecio} MXN · pago único</p>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold">${planPrecio}</p>
-                <p className="text-primary-400 text-xs">MXN</p>
-              </div>
-            </div>
+        <div className="bg-white rounded-3xl shadow-2xl px-8 py-9 sm:px-10">
+          <div className="flex justify-center mb-6">
+            <Link to="/" className="hover:opacity-80 transition-opacity"><Logo className="h-10" /></Link>
           </div>
-        )}
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h1 className="text-xl font-bold text-slate-800 mb-1">
-            {hasPlan ? 'Crea tu cuenta y paga' : 'Crear cuenta gratis'}
+          <h1 className="text-2xl font-extrabold text-navy-900 text-center">
+            {hasPlan ? 'Crea tu cuenta' : 'Crear cuenta gratis'}
           </h1>
-          <p className="text-slate-500 text-sm mb-4">
-            {hasPlan ? `Paso 1 de 2: Crea tu cuenta para continuar al pago` : 'Empieza en 30 segundos. Sin tarjeta requerida.'}
+          <p className="text-slate-500 text-sm text-center mt-1.5 mb-6">
+            {hasPlan ? 'Paso 1 de 2 · continúa al pago' : 'Empieza en 30 segundos. Sin tarjeta requerida.'}
           </p>
 
+          {hasPlan && (
+            <div className="bg-primary-50 border border-primary-100 rounded-xl p-3.5 mb-5 flex items-center gap-3">
+              <span className="w-9 h-9 bg-primary-500 rounded-lg flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-white" />
+              </span>
+              <div className="flex-1">
+                <p className="text-navy-900 font-semibold text-sm">{planNombre}</p>
+                <p className="text-slate-500 text-xs">{planFolios} folios · ${planPrecio} MXN · pago único</p>
+              </div>
+            </div>
+          )}
+
           {!hasPlan && (
-            <div className="flex items-center gap-2 rounded-xl bg-success-50 border border-success-100 px-3 py-2 mb-5">
+            <div className="flex items-center gap-2 rounded-xl bg-success-50 border border-success-100 px-3.5 py-2.5 mb-5">
               <Gift className="w-4 h-4 text-success-600 shrink-0" />
               <p className="text-xs text-success-800"><strong>5 folios de prueba gratis</strong> al crear tu cuenta.</p>
             </div>
@@ -135,52 +116,57 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Nombre y apellido *</label>
-                <input type="text" className="input" placeholder="Alan Velázquez" value={form.nombre} onChange={set('nombre')} required />
+                <input type="text" className={inputClass} placeholder="Alan Velázquez" value={form.nombre} onChange={set('nombre')} required />
               </div>
               <div>
                 <label className="label">Empresa</label>
-                <input type="text" className="input" placeholder="Mi Empresa" value={form.empresa} onChange={set('empresa')} />
+                <input type="text" className={inputClass} placeholder="Mi Empresa" value={form.empresa} onChange={set('empresa')} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Teléfono</label>
-                <input type="tel" className="input" placeholder="55 1234 5678" value={form.telefono} onChange={set('telefono')} />
+                <input type="tel" className={inputClass} placeholder="55 1234 5678" value={form.telefono} onChange={set('telefono')} />
               </div>
               <div>
-                <label className="label">Correo electrónico *</label>
-                <input type="email" className="input" placeholder="tu@empresa.com" value={form.email} onChange={set('email')} required />
+                <label className="label">Correo *</label>
+                <input type="email" className={inputClass} placeholder="tu@empresa.com" value={form.email} onChange={set('email')} required />
               </div>
             </div>
             <div>
               <label className="label">Contraseña *</label>
               <div className="relative">
-                <input type={showPass ? 'text' : 'password'} className="input pr-10" placeholder="Mínimo 6 caracteres" value={form.password} onChange={set('password')} required minLength={6} />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <input type={showPass ? 'text' : 'password'} className={`${inputClass} pr-11`} placeholder="Mínimo 6 caracteres"
+                  value={form.password} onChange={set('password')} required minLength={6} />
+                <button type="button" onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3 text-sm">
+            <button type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white font-semibold text-sm transition-colors disabled:opacity-60 shadow-lg shadow-primary-500/25 mt-1">
               {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-              {hasPlan ? 'Crear cuenta y continuar al pago →' : 'Crear cuenta gratis'}
+              {hasPlan ? 'Crear cuenta y continuar →' : 'Crear mi cuenta gratis'}
             </button>
           </form>
 
           {!hasPlan && (
-            <div className="mt-4 flex items-center gap-4 text-xs text-slate-400">
+            <div className="mt-4 flex items-center justify-center gap-4 text-xs text-slate-400">
               <span className="flex items-center gap-1"><Check className="w-3 h-3 text-primary-500" /> Sin tarjeta</span>
               <span className="flex items-center gap-1"><Check className="w-3 h-3 text-primary-500" /> Sin contrato</span>
-              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-primary-500" /> Soporte en español</span>
+              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-primary-500" /> En español</span>
             </div>
           )}
 
-          <p className="text-center text-sm text-slate-500 mt-5">
+          <p className="text-center text-sm text-slate-500 mt-6">
             ¿Ya tienes cuenta?{' '}
-            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">Iniciar sesión</Link>
+            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-semibold">Inicia sesión</Link>
           </p>
         </div>
+
+        <p className="text-center text-white/50 text-xs mt-6">© 2026 Cotiza Go · Todos los derechos reservados</p>
       </div>
     </div>
   )
