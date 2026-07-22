@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-do
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import Logo from '../Logo'
+import MenuUsuario from '../MenuUsuario'
 import {
   LayoutDashboard, Users, FileText, CreditCard, Package2, Blocks,
   LifeBuoy, UserCog, ScrollText, Settings, LogOut, Menu, X, ArrowLeft, Mail,
@@ -31,19 +32,18 @@ const linkClasses = ({ isActive }: { isActive: boolean }) => clsx(
 )
 
 export default function AdminLayout() {
-  const { profile, signOut } = useAuth()
+  const { signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [open, setOpen] = useState(false)
 
   const handleSignOut = async () => { await signOut(); navigate('/login') }
   const currentLabel = adminNav.find(i => i.end ? location.pathname === i.to : location.pathname.startsWith(i.to))?.label ?? 'Superadmin'
-  const inicial = (profile?.nombre ?? profile?.email ?? 'A')[0].toUpperCase()
 
   // JSX en variable, no componente en el render (evita re-montajes).
   const sidebar = (
     <div className="flex flex-col h-full">
-      <div className="px-2 pt-1 pb-4"><Logo variant="chip" className="h-8" /></div>
+      <div className="flex justify-center pt-1 pb-5"><Logo variant="chip" className="h-8" /></div>
       <div className="px-3 pb-4 mb-2 border-b border-[#20304A]">
         <p className="text-[10px] font-semibold tracking-widest text-[#3FD4C7] uppercase">Control central</p>
         <p className="text-sm font-bold text-white mt-0.5">Superadministrador</p>
@@ -93,7 +93,7 @@ export default function AdminLayout() {
           </div>
           <div className="flex items-center gap-2.5">
             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-success-600 font-medium"><span className="w-2 h-2 rounded-full bg-success-500" /> Operativo</span>
-            <span className="w-9 h-9 rounded-full bg-navy-900 text-white text-xs font-bold flex items-center justify-center">{inicial}</span>
+            <MenuUsuario />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 lg:p-8"><Outlet /></main>

@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import Logo from '../Logo'
+import MenuUsuario from '../MenuUsuario'
 import {
   LayoutDashboard, FileText, Users, Package, Coins, Blocks,
   Mail, Building2, LogOut, Menu, X, Plus, LifeBuoy,
@@ -47,14 +48,12 @@ export default function AppLayout() {
     i.end ? location.pathname === i.to : location.pathname.startsWith(i.to)
   )?.label ?? 'Panel'
 
-  const inicial = (profile?.nombre ?? profile?.email ?? 'U')[0].toUpperCase()
-
   // JSX en una variable (no un componente definido en el render): así React no
   // desmonta y vuelve a montar el menú en cada actualización.
   const sidebar = (
     <div className="flex flex-col h-full">
-      {/* Logo a color en placa blanca (se lee sobre el navy del menú) */}
-      <div className="px-2 pt-1 pb-6">
+      {/* Logo a color en placa blanca, centrado */}
+      <div className="flex justify-center pt-1 pb-6">
         <Logo variant="chip" className="h-8" />
       </div>
 
@@ -126,7 +125,7 @@ export default function AppLayout() {
                 <p className="text-xs font-semibold text-navy-900 leading-none">{profile?.nombre ?? 'Usuario'}</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">Plan {(profile?.plan ?? 'gratis')}</p>
               </div>
-              <span className="w-9 h-9 rounded-full bg-navy-900 text-white text-xs font-bold flex items-center justify-center">{inicial}</span>
+              <MenuUsuario />
             </div>
           </div>
         </header>

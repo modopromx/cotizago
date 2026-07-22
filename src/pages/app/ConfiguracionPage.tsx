@@ -14,7 +14,7 @@ const REGIMENES = [
 ]
 
 export default function ConfiguracionPage() {
-  const { profile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
   const wsId = profile?.workspace_id
   const [form, setForm] = useState<any>({ tipo: 'empresa', pais: 'MX', moneda: 'MXN', impuesto_default: 16, vigencia_dias: 15, color_principal: '#08AEB6' })
   const [tab, setTab] = useState<Tab>('empresa')
@@ -68,8 +68,18 @@ export default function ConfiguracionPage() {
       { ...form, workspace_id: wsId, updated_at: new Date().toISOString() },
       { onConflict: 'workspace_id' }
     )
-    if (error) toast.error('Error al guardar: ' + error.message)
-    else toast.success('Configuración guardada')
+    if (error) { toast.error('Error al guardar: ' + error.message); setSaving(false); return }
+
+    // Espeja el logo y el nombre en el perfil, que es de donde el avatar del
+    // header toma la imagen de la empresa.
+    if (profile?.id) {
+      await supabase.from('profiles').update({
+        logo_url: form.logo_url || null,
+        empresa: form.nombre_comercial || form.razon_social || profile.empresa,
+      }).eq('id', profile.id)
+      await refreshProfile()
+    }
+    toast.success('Configuración guardada')
     setSaving(false)
   }
 
