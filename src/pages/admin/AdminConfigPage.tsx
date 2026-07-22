@@ -6,6 +6,16 @@ import { Save, CreditCard, Bell, CheckCircle2, Copy, ShieldCheck, Eye, EyeOff, E
 type Tab = 'pagos' | 'notificaciones' | 'whatsapp'
 
 const WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-webhook`
+
+// Los eventos que stripe-webhook procesa de verdad. Si falta alguno, esa parte
+// del cobro deja de funcionar en silencio: Stripe simplemente no lo avisa.
+const EVENTOS_STRIPE: Array<[string, string]> = [
+  ['checkout.session.completed', 'alta de folios y de módulos'],
+  ['invoice.payment_succeeded', 'renovación mensual cobrada'],
+  ['invoice.payment_failed', 'tarjeta rechazada'],
+  ['customer.subscription.updated', 'cambio de estado o cancelación programada'],
+  ['customer.subscription.deleted', 'baja definitiva'],
+]
 const WALINKER_WEBHOOK_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/walinker-webhook`
 
 // IMPORTANTE: estos componentes viven FUERA del render del padre. Si se definen
@@ -255,11 +265,33 @@ export default function AdminConfigPage() {
 
             <div className="rounded-xl bg-fondo p-4 space-y-2">
               <p className="text-sm font-medium text-navy-900">Endpoint del webhook</p>
-              <p className="text-xs text-slate-500">En Stripe: Developers → Webhooks → Add endpoint. Evento <code className="text-navy-700">checkout.session.completed</code></p>
+              <p className="text-xs text-slate-500">
+                En Stripe: Developers → Webhooks → Add endpoint. Hay que registrarlo
+                <strong> en cada modo por separado</strong> (prueba y producción tienen su propio endpoint y su propio whsec).
+              </p>
               <div className="flex items-center gap-2 bg-white rounded-lg border border-slate-200 px-3 py-2">
                 <code className="text-xs text-slate-600 truncate flex-1">{WEBHOOK_URL}</code>
                 <button onClick={() => { navigator.clipboard.writeText(WEBHOOK_URL); toast.success('Copiado') }} className="text-slate-400 hover:text-navy-700 inline-flex items-center gap-1 text-xs"><Copy className="w-3.5 h-3.5" /> Copiar</button>
               </div>
+
+              <p className="text-xs font-medium text-navy-900 pt-1">Eventos que hay que activar</p>
+              <ul className="text-[11px] text-slate-500 space-y-0.5">
+                {EVENTOS_STRIPE.map(([ev, para]) => (
+                  <li key={ev} className="flex gap-2">
+                    <code className="text-navy-700 shrink-0">{ev}</code>
+                    <span className="text-slate-400">— {para}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => { navigator.clipboard.writeText(EVENTOS_STRIPE.map(e => e[0]).join('\n')); toast.success('Eventos copiados') }}
+                className="text-xs text-primary-600 hover:underline inline-flex items-center gap-1">
+                <Copy className="w-3 h-3" /> Copiar la lista de eventos
+              </button>
+              <p className="text-[11px] text-amber-600">
+                No actives <code>invoice.paid</code> además de <code>invoice.payment_succeeded</code>: son equivalentes y
+                registrarían el mismo cobro dos veces.
+              </p>
             </div>
 
             <div className="flex justify-end">
