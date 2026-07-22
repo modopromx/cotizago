@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import Logo from '../Logo'
 import MenuUsuario from '../MenuUsuario'
+import NotificacionesAdmin from '../NotificacionesAdmin'
 import {
   LayoutDashboard, Users, FileText, CreditCard, Package2, Blocks,
   LifeBuoy, UserCog, ScrollText, Settings, LogOut, Menu, X, ArrowLeft, Mail,
@@ -93,6 +94,7 @@ export default function AdminLayout() {
           </div>
           <div className="flex items-center gap-2.5">
             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-success-600 font-medium"><span className="w-2 h-2 rounded-full bg-success-500" /> Operativo</span>
+            <NotificacionesAdmin />
             <MenuUsuario />
           </div>
         </header>
