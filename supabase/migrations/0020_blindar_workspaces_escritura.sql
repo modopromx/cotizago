@@ -1,0 +1,11 @@
+-- HALLAZGO DE SEGURIDAD (2026-07-22): la tabla workspaces daba a `authenticated`
+-- UPDATE sobre TODAS sus columnas, y la politica ws_update solo exigia ser el
+-- dueño (owner_id = auth.uid()) sin with_check. Resultado: un usuario podia,
+-- desde la consola del navegador, subirse su propio `limite_emails_dia` (saltar
+-- el limite anti-spam) o inflar `folios_balance`. Verificado explotable en vivo.
+--
+-- El frontend NUNCA escribe en workspaces; solo lo modifican funciones
+-- SECURITY DEFINER (handle_new_user, enviar_cotizacion, acreditar_folios,
+-- ajustar_folios) que corren como su dueño y no dependen de este grant. Por eso
+-- se revoca toda escritura a los roles publicos sin romper ningun flujo.
+revoke insert, update, delete, truncate on public.workspaces from authenticated, anon;
