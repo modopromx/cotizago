@@ -1,62 +1,47 @@
-// Genera los iconos PNG de la PWA a partir del SVG de marca.
+// Genera los iconos PNG de la PWA y el favicon a partir del ICONO oficial
+// (símbolo C/G sobre fondo blanco). El logo con letras se usa dentro de la app
+// (public/cotiza-go-logo.png); para el ícono cuadrado de app/favicon va solo el
+// símbolo, que es lo que se lee bien en tamaños chicos.
 //
-// Hacen falta PNG porque:
-//  - iOS ignora por completo los apple-touch-icon en SVG (saldria en blanco).
-//  - Chrome pide 192 y 512 en PNG para ofrecer "Instalar aplicacion".
-//  - El icono "maskable" de Android se recorta en circulo/squircle, asi que su
-//    contenido va dentro de la zona segura (80%) y el fondo llega a los bordes.
+//  - iOS ignora los apple-touch-icon en SVG (por eso PNG).
+//  - Chrome pide 192 y 512 en PNG para ofrecer "Instalar aplicación".
+//  - El "maskable" de Android se recorta en círculo/squircle: fondo a sangre.
 //
 // Uso: node scripts/generar-iconos.mjs
 import sharp from 'sharp'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 
-const FONDO_A = '#06213B'
-const FONDO_B = '#0B6DAD'
+const ICONO = await readFile('scripts/icono.png')   // símbolo C/G, fondo blanco
 
-// El dibujo de la marca, sin fondo, en un lienzo de 512.
-const marca = `
-  <g transform="translate(146 116) scale(1.72)">
-    <path d="M8 14 Q8 4 18 4 L70 4 L102 36 L102 116 Q102 126 92 126 L18 126 Q8 126 8 116 Z"
-      fill="url(#doc)" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
-    <path d="M70 4 L70 36 L102 36" fill="none" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>
-    <polyline points="22,96 37,70 52,82 68,54" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="68" y1="54" x2="86" y2="54" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
-    <polyline points="79,45 88,54 79,63" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>`
+// Máscara de esquinas redondeadas (blanco dentro, transparente fuera).
+const mascara = (tam, radio) => Buffer.from(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${tam}" height="${tam}">
+     <rect width="${tam}" height="${tam}" rx="${radio}" fill="#fff"/>
+   </svg>`
+)
 
-const defs = `
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="${FONDO_A}"/><stop offset="100%" stop-color="${FONDO_B}"/>
-    </linearGradient>
-    <linearGradient id="doc" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#17C5C9"/><stop offset="55%" stop-color="${FONDO_B}"/>
-      <stop offset="100%" stop-color="${FONDO_A}"/>
-    </linearGradient>
-  </defs>`
-
-// radio: esquinas redondeadas (0 = cuadrado completo)
-// escala: cuanto se encoge la marca respecto al lienzo
-const svg = (radio, escala) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  ${defs}
-  <rect width="512" height="512" rx="${radio}" fill="url(#bg)"/>
-  <g transform="translate(${256 * (1 - escala)} ${256 * (1 - escala)}) scale(${escala})">${marca}</g>
-</svg>`
+// Icono cuadrado con fondo blanco; radio = esquinas redondeadas (0 = cuadrado).
+async function icono(tam, radio) {
+  // Se aplana sobre blanco por si el PNG trae algún borde no-opaco.
+  const base = await sharp(ICONO).flatten({ background: '#ffffff' }).resize(tam, tam).png().toBuffer()
+  if (radio === 0) return base
+  return sharp(base).composite([{ input: mascara(tam, radio), blend: 'dest-in' }]).png().toBuffer()
+}
 
 const salidas = [
-  // Icono normal: esquinas redondeadas propias.
-  { archivo: 'public/pwa-192x192.png', tam: 192, svg: svg(112, 1) },
-  { archivo: 'public/pwa-512x512.png', tam: 512, svg: svg(112, 1) },
-  // Maskable: fondo a sangre y marca dentro de la zona segura.
-  { archivo: 'public/pwa-maskable-512x512.png', tam: 512, svg: svg(0, 0.72) },
-  // iOS aplica su propia mascara: fondo cuadrado, sin transparencia.
-  { archivo: 'public/apple-touch-icon.png', tam: 180, svg: svg(0, 0.86) },
-  // Favicon PNG de respaldo para navegadores viejos.
-  { archivo: 'public/favicon-32x32.png', tam: 32, svg: svg(64, 1) },
+  // Icono normal (purpose "any"): esquinas redondeadas propias.
+  { archivo: 'public/pwa-192x192.png', tam: 192, radio: 42 },
+  { archivo: 'public/pwa-512x512.png', tam: 512, radio: 112 },
+  // Maskable: fondo blanco a sangre (Android aplica su propio recorte).
+  { archivo: 'public/pwa-maskable-512x512.png', tam: 512, radio: 0 },
+  // iOS aplica su propia máscara: fondo cuadrado, sin transparencia.
+  { archivo: 'public/apple-touch-icon.png', tam: 180, radio: 0 },
+  // Favicon de la pestaña del navegador.
+  { archivo: 'public/favicon-32x32.png', tam: 32, radio: 6 },
 ]
 
 for (const s of salidas) {
-  const png = await sharp(Buffer.from(s.svg)).resize(s.tam, s.tam).png().toBuffer()
+  const png = await icono(s.tam, s.radio)
   await writeFile(s.archivo, png)
   console.log(`${s.archivo}  ${s.tam}x${s.tam}  ${(png.length / 1024).toFixed(1)} KB`)
 }

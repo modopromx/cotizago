@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/utils'
 import { Users, DollarSign, Coins, FileText, CreditCard, Mail, MessageCircle } from 'lucide-react'
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts'
 
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-
 export default function AdminDashboardPage() {
+  const { t } = useTranslation()
+  const MESES = t('meses', { returnObjects: true }) as string[]
   const [loading, setLoading] = useState(true)
   const [d, setD] = useState<any>({ usuarios: 0, cotis: [], pagos: [], mrr: 0, integ: {} })
 
@@ -50,64 +51,70 @@ export default function AdminDashboardPage() {
   const hayIngresos = buckets.some(b => b.value > 0)
 
   const kpis = [
-    { label: 'Usuarios', value: d.usuarios, icon: Users, sub: 'Registrados' },
-    { label: 'MRR de módulos', value: formatCurrency(d.mrr), icon: DollarSign, sub: 'Mensual recurrente' },
-    { label: 'Folios vendidos', value: foliosVendidos, icon: Coins, sub: formatCurrency(ingresoFolios) },
-    { label: 'Cotizaciones', value: d.cotis.length, icon: FileText, sub: `${tasaAcept}% aceptación` },
+    { label: t('adm.dash.kUsuarios'), value: d.usuarios, icon: Users, sub: t('adm.dash.kRegistrados') },
+    { label: t('adm.dash.kMrr'), value: formatCurrency(d.mrr), icon: DollarSign, sub: t('adm.dash.kMrrSub') },
+    { label: t('adm.dash.kFolios'), value: foliosVendidos, icon: Coins, sub: formatCurrency(ingresoFolios) },
+    { label: t('adm.dash.kCotizaciones'), value: d.cotis.length, icon: FileText, sub: t('adm.dash.kAcept', { n: tasaAcept }) },
   ]
 
   const integraciones = [
     { nombre: 'Stripe', icon: CreditCard, ok: !!d.integ.stripe_secret_key && !!d.integ.stripe_webhook_secret },
-    { nombre: 'Email (SMTP/Resend)', icon: Mail, ok: !!d.integ.smtp_password || !!d.integ.resend_api_key },
+    { nombre: t('adm.dash.emailSmtp'), icon: Mail, ok: !!d.integ.smtp_password || !!d.integ.resend_api_key },
     { nombre: 'WhatsApp Cloud API', icon: MessageCircle, ok: false },
   ]
 
-  if (loading) return <div className="card p-8 text-center text-slate-500 text-sm">Cargando...</div>
+  if (loading) return <div role="status" className="card p-8 text-center text-slate-500 text-sm">{t('adm.cargando')}</div>
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-navy-900">Visión general de la plataforma</h1>
-        <p className="text-slate-500 text-sm">Operación, ingresos y salud del sistema.</p>
+        <h1 className="text-2xl font-bold text-navy-900">{t('adm.dash.title')}</h1>
+        <p className="text-slate-500 text-sm">{t('adm.dash.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map(k => (
           <div key={k.label} className="card p-5">
-            <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center mb-3"><k.icon className="w-4 h-4 text-primary-600" /></div>
+            <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center mb-3" aria-hidden="true"><k.icon className="w-4 h-4 text-primary-700" /></div>
             <p className="text-2xl font-extrabold text-navy-900">{k.value}</p>
             <p className="text-xs font-medium text-slate-500 mt-0.5">{k.label}</p>
-            <p className="text-[11px] text-slate-400 mt-1">{k.sub}</p>
+            <p className="text-[11px] text-slate-500 mt-1">{k.sub}</p>
           </div>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="card p-6 lg:col-span-2">
-          <h2 className="font-semibold text-navy-900">Ingresos de la plataforma</h2>
-          <p className="text-xs text-slate-400 mb-4">Folios · últimos 6 meses</p>
+          <h2 className="font-semibold text-navy-900">{t('adm.dash.ingresos')}</h2>
+          <p className="text-xs text-slate-500 mb-4">{t('adm.dash.ingresosSub')}</p>
           {hayIngresos ? (
+            // La gráfica es visual; la misma información va en texto para lectores de pantalla.
+            <div>
+            <p className="sr-only">{buckets.map(b => `${b.label}: ${formatCurrency(b.value)}`).join('; ')}</p>
+            <div aria-hidden="true">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={buckets} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={40}>
                   {buckets.map((_, i) => <Cell key={i} fill={i === buckets.length - 1 ? '#08AEB6' : '#c3f1f2'} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            </div>
+            </div>
           ) : (
-            <div className="h-[200px] flex items-center justify-center text-sm text-slate-400">Aún no hay ingresos registrados</div>
+            <div className="h-[200px] flex items-center justify-center text-sm text-slate-500">{t('adm.dash.sinIngresos')}</div>
           )}
         </div>
 
         <div className="card p-6">
-          <h2 className="font-semibold text-navy-900">Salud de integraciones</h2>
-          <p className="text-xs text-slate-400 mb-4">Servicios críticos</p>
+          <h2 className="font-semibold text-navy-900">{t('adm.dash.salud')}</h2>
+          <p className="text-xs text-slate-500 mb-4">{t('adm.dash.saludSub')}</p>
           <div className="space-y-3">
             {integraciones.map(i => (
               <div key={i.nombre} className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-sm text-slate-700"><i.icon className="w-4 h-4 text-slate-400" /> {i.nombre}</span>
-                <span className={`badge ${i.ok ? 'bg-success-50 text-success-600' : 'bg-amber-50 text-amber-600'}`}>{i.ok ? 'Operativa' : 'Sin configurar'}</span>
+                <span className="flex items-center gap-2 text-sm text-slate-700"><i.icon className="w-4 h-4 text-slate-500" aria-hidden="true" /> {i.nombre}</span>
+                <span className={`badge ${i.ok ? 'bg-success-50 text-success-700' : 'bg-amber-50 text-amber-700'}`}>{i.ok ? t('adm.dash.operativa') : t('adm.dash.sinConfigurar')}</span>
               </div>
             ))}
           </div>

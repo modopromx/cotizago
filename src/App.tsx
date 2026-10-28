@@ -1,47 +1,64 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { supabase } from './lib/supabase'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import AvisoActualizacion from './components/AvisoActualizacion'
 
+// La portada se carga de inmediato; todo lo demás bajo demanda (React.lazy),
+// para que la landing no descargue el panel, el PDF, las gráficas ni Stripe.
 // Landing
 import LandingPage from './pages/landing/LandingPage'
 
 // Auth
-import LoginPage from './pages/auth/LoginPage'
-import RegisterPage from './pages/auth/RegisterPage'
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
+const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'))
+const RecuperarPage = lazy(() => import('./pages/auth/RecuperarPage'))
+const NuevaContrasenaPage = lazy(() => import('./pages/auth/NuevaContrasenaPage'))
 
 // App (cliente)
-import AppLayout from './components/layout/AppLayout'
-import DashboardPage from './pages/app/DashboardPage'
-import CotizacionesPage from './pages/app/CotizacionesPage'
-import NuevaCotizacionPage from './pages/app/NuevaCotizacionPage'
-import EditarCotizacionPage from './pages/app/EditarCotizacionPage'
-import ClientesPage from './pages/app/ClientesPage'
-import ProductosPage from './pages/app/ProductosPage'
-import ModulosPage from './pages/app/ModulosPage'
-import PlantillasPage from './pages/app/PlantillasPage'
-import FoliosPage from './pages/app/FoliosPage'
-import ConfiguracionPage from './pages/app/ConfiguracionPage'
-import SoportePage from './pages/app/SoportePage'
+const AppLayout = lazy(() => import('./components/layout/AppLayout'))
+const DashboardPage = lazy(() => import('./pages/app/DashboardPage'))
+const CotizacionesPage = lazy(() => import('./pages/app/CotizacionesPage'))
+const NuevaCotizacionPage = lazy(() => import('./pages/app/NuevaCotizacionPage'))
+const EditarCotizacionPage = lazy(() => import('./pages/app/EditarCotizacionPage'))
+const ClientesPage = lazy(() => import('./pages/app/ClientesPage'))
+const ProductosPage = lazy(() => import('./pages/app/ProductosPage'))
+const ModulosPage = lazy(() => import('./pages/app/ModulosPage'))
+const PlantillasPage = lazy(() => import('./pages/app/PlantillasPage'))
+const FoliosPage = lazy(() => import('./pages/app/FoliosPage'))
+const InvitaPage = lazy(() => import('./pages/app/InvitaPage'))
+const FacturasPage = lazy(() => import('./pages/app/FacturasPage'))
+const ApiKeysPage = lazy(() => import('./pages/app/ApiKeysPage'))
+const ConfiguracionPage = lazy(() => import('./pages/app/ConfiguracionPage'))
+const SoportePage = lazy(() => import('./pages/app/SoportePage'))
 
 // Admin
-import AdminLayout from './components/layout/AdminLayout'
-import AdminDashboardPage from './pages/admin/AdminDashboardPage'
-import AdminUsuariosPage from './pages/admin/AdminUsuariosPage'
-import AdminCotizacionesPage from './pages/admin/AdminCotizacionesPage'
-import AdminClientesPage from './pages/admin/AdminClientesPage'
-import AdminPagosPage from './pages/admin/AdminPagosPage'
-import AdminPaquetesPage from './pages/admin/AdminPaquetesPage'
-import AdminModulosPage from './pages/admin/AdminModulosPage'
-import AdminSoportePage from './pages/admin/AdminSoportePage'
-import AdminConfigPage from './pages/admin/AdminConfigPage'
-import AdminLogsPage from './pages/admin/AdminLogsPage'
-import AdminEquipoPage from './pages/admin/AdminEquipoPage'
-import AdminWhatsAppPage from './pages/admin/AdminWhatsAppPage'
-import AdminEmailTemplatesPage from './pages/admin/AdminEmailTemplatesPage'
+const AdminLayout = lazy(() => import('./components/layout/AdminLayout'))
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
+const AdminUsuariosPage = lazy(() => import('./pages/admin/AdminUsuariosPage'))
+const AdminCotizacionesPage = lazy(() => import('./pages/admin/AdminCotizacionesPage'))
+const AdminClientesPage = lazy(() => import('./pages/admin/AdminClientesPage'))
+const AdminPagosPage = lazy(() => import('./pages/admin/AdminPagosPage'))
+const AdminPaquetesPage = lazy(() => import('./pages/admin/AdminPaquetesPage'))
+const AdminModulosPage = lazy(() => import('./pages/admin/AdminModulosPage'))
+const AdminSoportePage = lazy(() => import('./pages/admin/AdminSoportePage'))
+const AdminConfigPage = lazy(() => import('./pages/admin/AdminConfigPage'))
+const AdminFacturacionPage = lazy(() => import('./pages/admin/AdminFacturacionPage'))
+const AdminReferidosPage = lazy(() => import('./pages/admin/AdminReferidosPage'))
+const AdminLogsPage = lazy(() => import('./pages/admin/AdminLogsPage'))
+const AdminEquipoPage = lazy(() => import('./pages/admin/AdminEquipoPage'))
+const AdminWhatsAppPage = lazy(() => import('./pages/admin/AdminWhatsAppPage'))
+const AdminEmailTemplatesPage = lazy(() => import('./pages/admin/AdminEmailTemplatesPage'))
 
 // Público
-import CotizacionPublicaPage from './pages/public/CotizacionPublicaPage'
+const CotizacionPublicaPage = lazy(() => import('./pages/public/CotizacionPublicaPage'))
+const ContactoPage = lazy(() => import('./pages/public/ContactoPage'))
+const PrivacidadPage = lazy(() => import('./pages/public/PrivacidadPage'))
+const TerminosPage = lazy(() => import('./pages/public/TerminosPage'))
+const ApiDocsPage = lazy(() => import('./pages/public/ApiDocsPage'))
+const FacturarPage = lazy(() => import('./pages/public/FacturarPage'))
+const DocumentacionPage = lazy(() => import('./pages/public/DocumentacionPage'))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -66,6 +83,20 @@ function Spinner() {
   )
 }
 
+/** Red de seguridad de la recuperación de contraseña: si Supabase manda el enlace
+ *  del correo a la portada (pasa cuando la URL no está en su lista de redirecciones
+ *  permitidas), el evento PASSWORD_RECOVERY igual lleva a /nueva-contrasena. */
+function RedirigirRecuperacion() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((ev) => {
+      if (ev === 'PASSWORD_RECOVERY' && window.location.pathname !== '/nueva-contrasena') navigate('/nueva-contrasena')
+    })
+    return () => subscription.unsubscribe()
+  }, [navigate])
+  return null
+}
+
 function AppRoutes() {
   const { user, isAdminUser } = useAuth()
 
@@ -77,9 +108,20 @@ function AppRoutes() {
       {/* Público - cotización */}
       <Route path="/c/:token" element={<CotizacionPublicaPage />} />
 
+      {/* Público - contacto y privacidad */}
+      <Route path="/contacto" element={<ContactoPage />} />
+      <Route path="/privacidad" element={<PrivacidadPage />} />
+      <Route path="/terminos" element={<TerminosPage />} />
+      <Route path="/api" element={<ApiDocsPage />} />
+      <Route path="/ayuda" element={<DocumentacionPage />} />
+      <Route path="/facturar" element={<FacturarPage />} />
+
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to={isAdminUser ? '/admin' : '/app'} /> : <LoginPage />} />
       <Route path="/registro" element={user ? <Navigate to="/app" /> : <RegisterPage />} />
+      <Route path="/recuperar" element={<RecuperarPage />} />
+      {/* Sin redirección por sesión: el enlace del correo ABRE una sesión temporal. */}
+      <Route path="/nueva-contrasena" element={<NuevaContrasenaPage />} />
 
       {/* App cliente */}
       <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -92,6 +134,9 @@ function AppRoutes() {
         <Route path="modulos" element={<ModulosPage />} />
         <Route path="plantillas" element={<PlantillasPage />} />
         <Route path="folios" element={<FoliosPage />} />
+        <Route path="invita" element={<InvitaPage />} />
+        <Route path="facturas" element={<FacturasPage />} />
+        <Route path="api" element={<ApiKeysPage />} />
         <Route path="configuracion" element={<ConfiguracionPage />} />
         <Route path="soporte" element={<SoportePage />} />
       </Route>
@@ -103,6 +148,8 @@ function AppRoutes() {
         <Route path="cotizaciones" element={<AdminCotizacionesPage />} />
         <Route path="clientes" element={<AdminClientesPage />} />
         <Route path="pagos" element={<AdminPagosPage />} />
+        <Route path="referidos" element={<AdminReferidosPage />} />
+        <Route path="facturacion" element={<AdminFacturacionPage />} />
         <Route path="paquetes" element={<AdminPaquetesPage />} />
         <Route path="modulos" element={<AdminModulosPage />} />
         <Route path="soporte" element={<AdminSoportePage />} />
@@ -122,7 +169,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <RedirigirRecuperacion />
+        <Suspense fallback={<Spinner />}>
+          <AppRoutes />
+        </Suspense>
         <AvisoActualizacion />
         <Toaster
           position="top-right"

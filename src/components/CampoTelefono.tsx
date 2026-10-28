@@ -4,8 +4,8 @@
 //
 // Nota: NO usamos emojis de bandera (🇲🇽). Windows no incluye esos glifos y los
 // pinta como dos letras ("MX"), que es justo lo que se veía mal. Usamos SVG.
-import { useEffect, useRef, useState } from 'react'
-import * as Banderas from 'country-flag-icons/react/3x2'
+import { useEffect, useId, useRef, useState } from 'react'
+import { BANDERAS } from '../lib/banderas'
 import { ChevronDown, Search } from 'lucide-react'
 
 export const PAISES = [
@@ -36,9 +36,10 @@ const PORLARGO = [...PAISES].sort((a, b) => b.dial.length - a.dial.length)
 
 /** Bandera SVG de un país (24x16). */
 export function Bandera({ code, className = '' }: { code: string; className?: string }) {
-  const F = (Banderas as Record<string, any>)[code]
-  if (!F) return <span className={`inline-block w-5 h-3.5 rounded-sm bg-slate-200 ${className}`} />
-  return <F className={`inline-block w-5 h-3.5 rounded-sm object-cover shadow-[0_0_0_1px_rgba(0,0,0,0.08)] ${className}`} />
+  const F = BANDERAS[code]
+  // Decorativa: el nombre del país / código ya va en texto junto a ella.
+  if (!F) return <span aria-hidden="true" className={`inline-block w-5 h-3.5 rounded-sm bg-slate-200 ${className}`} />
+  return <F aria-hidden="true" className={`inline-block w-5 h-3.5 rounded-sm object-cover shadow-[0_0_0_1px_rgba(0,0,0,0.08)] ${className}`} />
 }
 
 /** Separa un número internacional en país + número nacional. */
@@ -71,6 +72,12 @@ export default function CampoTelefono({ value, onChange, label = 'Teléfono', ay
   const [abierto, setAbierto] = useState(false)
   const [busca, setBusca] = useState('')
   const caja = useRef<HTMLDivElement>(null)
+  // El campo se usa varias veces en una misma pantalla: ids únicos por instancia.
+  const uid = useId()
+  const idNumero = `${uid}-numero`
+  const idAyuda = `${uid}-ayuda`
+  const idPanel = `${uid}-paises`
+  const nombrePais = PAISES.find(p => p.code === code)?.nombre ?? code
 
   // Cerrar al hacer clic fuera o con Escape.
   useEffect(() => {
@@ -96,45 +103,49 @@ export default function CampoTelefono({ value, onChange, label = 'Teléfono', ay
 
   return (
     <div>
-      <label className="label">{label}</label>
+      <label htmlFor={idNumero} className="label">{label}</label>
       <div className="flex gap-2">
         <div className="relative shrink-0" ref={caja}>
+          {/* El panel tiene buscador + botones: es un diálogo, no un listbox */}
           <button type="button" onClick={() => setAbierto(o => !o)}
-            className="input w-auto flex items-center gap-2 pr-2" aria-haspopup="listbox" aria-expanded={abierto}>
+            className="input w-auto flex items-center gap-2 pr-2" aria-haspopup="dialog" aria-expanded={abierto}
+            aria-controls={abierto ? idPanel : undefined}
+            aria-label={`Código de país: ${nombrePais} +${dial}. Cambiar país`}>
             <Bandera code={code} />
             <span className="font-medium">+{dial}</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${abierto ? 'rotate-180' : ''}`} />
+            <ChevronDown aria-hidden="true" className={`w-3.5 h-3.5 text-slate-500 transition-transform ${abierto ? 'rotate-180' : ''}`} />
           </button>
 
           {abierto && (
-            <div className="absolute z-50 mt-1 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div id={idPanel} role="dialog" aria-label="Elegir país" className="absolute z-50 mt-1 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
               <div className="relative p-2 border-b border-slate-100">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <Search aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                 <input autoFocus value={busca} onChange={e => setBusca(e.target.value)}
-                  placeholder="Buscar país..."
-                  className="w-full pl-7 pr-2 py-1.5 text-sm rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:border-primary-400" />
+                  placeholder="Buscar país..." aria-label="Buscar país"
+                  className="w-full pl-7 pr-2 py-1.5 text-base sm:text-sm rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:border-primary-400" />
               </div>
-              <ul className="max-h-60 overflow-y-auto py-1" role="listbox">
+              <ul className="max-h-60 overflow-y-auto py-1">
                 {lista.map(p => (
                   <li key={p.code}>
-                    <button type="button" onClick={() => elegir(p.dial)}
+                    <button type="button" onClick={() => elegir(p.dial)} aria-current={p.code === code ? 'true' : undefined}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-slate-50 ${p.code === code ? 'bg-primary-50/60 font-medium' : ''}`}>
                       <Bandera code={p.code} />
                       <span className="flex-1 text-navy-900">{p.nombre}</span>
-                      <span className="text-slate-400 tabular-nums">+{p.dial}</span>
+                      <span className="text-slate-500 tabular-nums">+{p.dial}</span>
                     </button>
                   </li>
                 ))}
-                {lista.length === 0 && <li className="px-3 py-4 text-sm text-slate-400 text-center">Sin resultados</li>}
+                {lista.length === 0 && <li className="px-3 py-4 text-sm text-slate-500 text-center">Sin resultados</li>}
               </ul>
             </div>
           )}
         </div>
 
-        <input className="input flex-1" inputMode="numeric" placeholder="55 1234 5678"
+        <input id={idNumero} type="tel" autoComplete="tel-national" aria-describedby={idAyuda}
+          className="input flex-1" inputMode="numeric" placeholder="55 1234 5678"
           value={nacional} onChange={e => setNacional(e.target.value)} />
       </div>
-      <p className="text-[11px] text-slate-400 mt-1">
+      <p id={idAyuda} className="text-[11px] text-slate-500 mt-1">
         {ayuda ?? 'Sin el +, sin espacios. Se guarda como '}
         {!ayuda && <code className="font-mono">+{dial}{nacional || '…'}</code>}
       </p>

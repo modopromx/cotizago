@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
@@ -7,6 +8,7 @@ import { cargarConfigStripe, instanciaStripe } from '../../lib/stripe'
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
 import type { Stripe } from '@stripe/stripe-js'
 import CampoTelefono from '../../components/CampoTelefono'
+import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
 import { MessageCircle, Mail, CreditCard, Code2, Blocks, Settings, Save, X, ExternalLink, AlertTriangle } from 'lucide-react'
 
@@ -19,6 +21,7 @@ const TIPO_CONFIG: Record<string, 'whatsapp' | 'pagos' | 'email'> = {
 }
 
 export default function ModulosPage() {
+  const { t } = useTranslation()
   const { profile } = useAuth()
   const wsId = profile?.workspace_id
   const [modulos, setModulos] = useState<any[]>([])
@@ -48,24 +51,32 @@ export default function ModulosPage() {
   useEffect(() => { load() }, [wsId])
   useEffect(() => { cargarConfigStripe().then(setStripeCfg) }, [])
 
+  // Escape cierra el checkout embebido (no usa <Modal> por el iframe de Stripe).
+  useEffect(() => {
+    if (!clientSecret) return
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') setClientSecret(null) }
+    document.addEventListener('keydown', tecla)
+    return () => document.removeEventListener('keydown', tecla)
+  }, [clientSecret])
+
   // Al volver del checkout, Stripe redirige aquí antes de que llegue el webhook.
   // Se consulta unos segundos hasta ver la suscripción activa.
   useEffect(() => {
     if (params.get('suscripcion') !== 'procesando' || !wsId) return
     let intentos = 0
-    const t = setInterval(async () => {
+    const iv = setInterval(async () => {
       intentos++
       const { data } = await supabase.from('modulo_suscripciones').select('*').eq('workspace_id', wsId)
       const activo = (data ?? []).some((s: any) => ['activa', 'morosa'].includes(s.estado))
       if (activo || intentos >= 10) {
-        clearInterval(t)
+        clearInterval(iv)
         params.delete('suscripcion'); params.delete('session_id'); setParams(params, { replace: true })
-        if (activo) toast.success('Módulo activado')
-        else toast('El pago se está confirmando. Actualiza en un momento.', { icon: '⏳' })
+        if (activo) toast.success(t('mod.moduloActivado'))
+        else toast(t('mod.pagoConfirmando'), { icon: '⏳' })
         load()
       }
     }, 1500)
-    return () => clearInterval(t)
+    return () => clearInterval(iv)
   }, [params, wsId])
 
   // 'morosa' sigue contando como activo: falló un cobro pero Stripe reintenta.
@@ -75,14 +86,14 @@ export default function ModulosPage() {
 
   const llamar = async (fn: string, body: any) => {
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session) throw new Error('Sesión expirada')
+    if (!session) throw new Error(t('mod.sesionExpirada'))
     const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fn}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(body),
     })
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data?.error ?? 'No se pudo completar la operación')
+    if (!res.ok) throw new Error(data?.error ?? t('mod.noCompletar'))
     return data
   }
 
@@ -90,7 +101,7 @@ export default function ModulosPage() {
   const contratar = async (m: any) => {
     if (!wsId) return
     if (!stripeCfg.habilitado || !stripeCfg.pk) {
-      toast.error('Los pagos aún no están configurados. Avísale al administrador.')
+      toast.error(t('mod.pagosNoConfig'))
       return
     }
     setOcupado(m.clave)
@@ -107,12 +118,12 @@ export default function ModulosPage() {
     const s = subs[m.clave]
     const fin = s?.periodo_fin ? formatDate(s.periodo_fin) : null
     if (!confirm(fin
-      ? `El módulo seguirá activo hasta el ${fin} y no se volverá a cobrar. ¿Continuar?`
-      : '¿Cancelar este módulo?')) return
+      ? t('mod.cancelarFin', { fin })
+      : t('mod.confCancelar'))) return
     setOcupado(m.clave)
     try {
       await llamar('cancel-subscription', { clave: m.clave })
-      toast.success(fin ? `Se cancelará el ${fin}` : 'Módulo cancelado')
+      toast.success(fin ? t('mod.seCancelaraFin', { fin }) : t('mod.moduloCancelado'))
       load()
     } catch (e: any) { toast.error(e.message) } finally { setOcupado(null) }
   }
@@ -121,7 +132,7 @@ export default function ModulosPage() {
     setOcupado(m.clave)
     try {
       await llamar('cancel-subscription', { clave: m.clave, reactivar: true })
-      toast.success('Se mantiene activo')
+      toast.success(t('mod.seMantiene'))
       load()
     } catch (e: any) { toast.error(e.message) } finally { setOcupado(null) }
   }
@@ -140,23 +151,23 @@ export default function ModulosPage() {
     const payload: any = { workspace_id: wsId, tipo: config.tipo, config: cfg, activa: true, updated_at: new Date().toISOString() }
     if (secreto) payload.secreto = secreto           // solo se sobrescribe si escribió algo
     const { error } = await supabase.from('integraciones').upsert(payload, { onConflict: 'workspace_id,tipo' })
-    if (error) toast.error('Error al guardar: ' + error.message)
-    else { toast.success('Configuración guardada'); setConfig(null); load() }
+    if (error) toast.error(t('mod.errorGuardar') + error.message)
+    else { toast.success(t('mod.configGuardada')); setConfig(null); load() }
     setSaving(false)
   }
 
-  if (loading) return <div className="card p-8 text-center text-slate-500 text-sm">Cargando...</div>
+  if (loading) return <div className="card p-8 text-center text-slate-500 text-sm">{t('mod.cargando')}</div>
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-navy-900">Módulos e integraciones</h1>
-          <p className="text-slate-500 text-sm">Contrata únicamente los módulos que necesita tu negocio.</p>
+          <h1 className="text-2xl font-bold text-navy-900">{t('mod.title')}</h1>
+          <p className="text-slate-500 text-sm">{t('mod.subtitle')}</p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-slate-400">{activos.length} módulos activos</p>
-          <p className="font-bold text-navy-900">{formatCurrency(gastoMensual)}<span className="text-xs font-normal text-slate-400">/mes</span></p>
+          <p className="text-xs text-slate-500">{t('mod.activosN', { n: activos.length })}</p>
+          <p className="font-bold text-navy-900">{formatCurrency(gastoMensual)}<span className="text-xs font-normal text-slate-500">{t('mod.mes')}</span></p>
         </div>
       </div>
 
@@ -173,44 +184,44 @@ export default function ModulosPage() {
           return (
             <div key={m.clave} className={`card p-5 flex flex-col ${activo ? 'ring-1 ring-primary-200' : ''}`}>
               <div className="flex items-start justify-between">
-                <span className="w-10 h-10 rounded-xl bg-fondo flex items-center justify-center text-navy-700"><Icon className="w-5 h-5" /></span>
+                <span className="w-10 h-10 rounded-xl bg-fondo flex items-center justify-center text-navy-700"><Icon className="w-5 h-5" aria-hidden="true" /></span>
                 <div className="flex gap-1 flex-wrap justify-end">
-                  {activo && !morosa && <span className="badge bg-success-50 text-success-600">Activo</span>}
-                  {morosa && <span className="badge bg-red-50 text-red-600">Pago pendiente</span>}
-                  {activo && tipo && !configurado && <span className="badge bg-amber-50 text-amber-600">Configurar</span>}
+                  {activo && !morosa && <span className="badge bg-success-50 text-success-700">{t('mod.activo')}</span>}
+                  {morosa && <span className="badge bg-red-50 text-red-700">{t('mod.pagoPendiente')}</span>}
+                  {activo && tipo && !configurado && <span className="badge bg-amber-50 text-amber-700">{t('mod.configurar')}</span>}
                 </div>
               </div>
               <h3 className="mt-3 font-semibold text-navy-900">{m.nombre}</h3>
               <p className="mt-1 text-xs text-slate-500 flex-1">{m.descripcion}</p>
-              <p className="mt-3 text-lg font-extrabold text-navy-900">{formatCurrency(m.precio)}<span className="text-xs font-normal text-slate-400">/mes</span></p>
-              <p className="text-[11px] text-slate-400">Adicional a tus folios</p>
+              <p className="mt-3 text-lg font-extrabold text-navy-900">{formatCurrency(m.precio)}<span className="text-xs font-normal text-slate-500">{t('mod.mes')}</span></p>
+              <p className="text-[11px] text-slate-500">{t('mod.adicional')}</p>
 
               {morosa && (
-                <p className="mt-2 text-[11px] text-red-600 flex items-start gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" />
-                  No pudimos cobrar tu tarjeta. Actualízala para no perder el módulo.
+                <p className="mt-2 text-[11px] text-red-700 flex items-start gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" />
+                  {t('mod.morosaAviso')}
                 </p>
               )}
               {porCancelar && s?.periodo_fin && (
-                <p className="mt-2 text-[11px] text-amber-600">Activo hasta el {formatDate(s.periodo_fin)}. No se volverá a cobrar.</p>
+                <p className="mt-2 text-[11px] text-amber-700">{t('mod.activoHastaFin', { fin: formatDate(s.periodo_fin) })}</p>
               )}
               {activo && !porCancelar && s?.periodo_fin && (
-                <p className="mt-2 text-[11px] text-slate-400">Se renueva el {formatDate(s.periodo_fin)}</p>
+                <p className="mt-2 text-[11px] text-slate-500">{t('mod.seRenuevaFin', { fin: formatDate(s.periodo_fin) })}</p>
               )}
 
               {activo ? (
                 <div className="mt-4 flex gap-2">
-                  {tipo && <button onClick={() => abrirConfig(m.clave)} className="btn-secondary flex-1 justify-center text-xs"><Settings className="w-3.5 h-3.5" /> Configurar</button>}
+                  {tipo && <button onClick={() => abrirConfig(m.clave)} className="btn-secondary flex-1 justify-center text-xs"><Settings className="w-3.5 h-3.5" aria-hidden="true" /> {t('mod.configurar')}</button>}
                   {porCancelar ? (
-                    <button onClick={() => reactivar(m)} disabled={cargando} className="btn-navy flex-1 justify-center text-xs">Reactivar</button>
+                    <button onClick={() => reactivar(m)} disabled={cargando} className="btn-navy flex-1 justify-center text-xs">{t('mod.reactivar')}</button>
                   ) : (
-                    <button onClick={() => cancelar(m)} disabled={cargando} className="btn-secondary flex-1 justify-center text-xs text-red-600">Cancelar</button>
+                    <button onClick={() => cancelar(m)} disabled={cargando} className="btn-secondary flex-1 justify-center text-xs text-red-700">{t('mod.cancelar')}</button>
                   )}
                 </div>
               ) : (
                 <button onClick={() => contratar(m)} disabled={cargando} className="btn-navy mt-4 w-full justify-center text-xs">
-                  {cargando ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
-                  Contratar · {formatCurrency(m.precio)}/mes
+                  {cargando ? <span role="status" aria-label="Cargando" className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                  {t('mod.contratar')} · {formatCurrency(m.precio)}{t('mod.mes')}
                 </button>
               )}
             </div>
@@ -220,11 +231,13 @@ export default function ModulosPage() {
 
       {/* Checkout embebido de Stripe: suscripción mensual del módulo */}
       {clientSecret && stripePromise && (
+        // No usa <Modal>: su trampa de foco no ve el iframe de Stripe y el
+        // teclado no podría entrar al formulario de pago.
         <div className="fixed inset-0 bg-navy-950/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl my-8">
+          <div role="dialog" aria-modal="true" aria-labelledby="mod-checkout-titulo" className="bg-white rounded-2xl shadow-2xl w-full max-w-xl my-8">
             <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h2 className="font-bold text-navy-900">Suscripción mensual</h2>
-              <button onClick={() => setClientSecret(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+              <h2 id="mod-checkout-titulo" className="font-bold text-navy-900">{t('mod.suscripcionMensual')}</h2>
+              <button onClick={() => setClientSecret(null)} aria-label="Cerrar" className="p-2 -m-2 text-slate-500 hover:text-slate-600"><X className="w-5 h-5" aria-hidden="true" /></button>
             </div>
             <div className="p-2">
               <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
@@ -237,33 +250,26 @@ export default function ModulosPage() {
 
       {/* Configuración del módulo contratado */}
       {config && (
-        <div className="fixed inset-0 bg-navy-950/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h2 className="font-bold text-navy-900">
-                {config.tipo === 'whatsapp' ? 'Conectar WhatsApp' : config.tipo === 'pagos' ? 'Pagos con tarjeta' : 'Tu servidor de email'}
-              </h2>
-              <button onClick={() => setConfig(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-            </div>
-
-            <div className="p-5 space-y-3">
+        <Modal ancho="max-w-md" onClose={() => setConfig(null)} sinCerrar={saving}
+          titulo={config.tipo === 'whatsapp' ? t('mod.conectarWa') : config.tipo === 'pagos' ? t('mod.pagosTarjeta') : t('mod.tuServidorEmail')}>
+            <div className="space-y-3">
               {config.tipo === 'whatsapp' && (
                 <>
-                  <p className="text-xs text-slate-500 bg-fondo rounded-lg p-3">Conecta tu número para enviar cotizaciones desde <strong>tu propio WhatsApp</strong>. Con WhatsApp Web se abre el chat con el mensaje listo; solo das enviar.</p>
+                  <p className="text-xs text-slate-500 bg-fondo rounded-lg p-3">{t('mod.waIntro')}</p>
                   <div>
-                    <label className="label">Método de conexión</label>
-                    <select className="input" value={form.metodo ?? 'web'} onChange={e => setForm({ ...form, metodo: e.target.value })}>
-                      <option value="web">WhatsApp Web (recomendado, sin costo)</option>
-                      <option value="cloud">Meta Cloud API (envío automático)</option>
+                    <label htmlFor="mod-metodoConexion" className="label">{t('mod.metodoConexion')}</label>
+                    <select id="mod-metodoConexion" className="input" value={form.metodo ?? 'web'} onChange={e => setForm({ ...form, metodo: e.target.value })}>
+                      <option value="web">{t('mod.waWeb')}</option>
+                      <option value="cloud">{t('mod.waCloud')}</option>
                     </select>
                   </div>
-                  <CampoTelefono label="Tu número de WhatsApp" value={form.numero}
+                  <CampoTelefono label={t('mod.tuNumeroWa')} value={form.numero}
                     onChange={v => setForm({ ...form, numero: v })} />
                   {form.metodo === 'cloud' && (
                     <>
-                      <div><label className="label">Phone Number ID</label><input className="input" value={form.phone_id ?? ''} onChange={e => setForm({ ...form, phone_id: e.target.value })} /></div>
-                      <div><label className="label">Token de acceso</label><input type="password" className="input" placeholder="•••" value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} /></div>
-                      <p className="text-[11px] text-amber-600">Meta Cloud API requiere cuenta verificada y plantillas aprobadas.</p>
+                      <div><label htmlFor="mod-phoneId" className="label">{t('mod.phoneId')}</label><input id="mod-phoneId" className="input" value={form.phone_id ?? ''} onChange={e => setForm({ ...form, phone_id: e.target.value })} /></div>
+                      <div><label htmlFor="mod-tokenAcceso" className="label">{t('mod.tokenAcceso')}</label><input id="mod-tokenAcceso" type="password" className="input" placeholder="•••" value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} /></div>
+                      <p className="text-[11px] text-amber-700">{t('mod.metaAviso')}</p>
                     </>
                   )}
                 </>
@@ -271,46 +277,45 @@ export default function ModulosPage() {
 
               {config.tipo === 'pagos' && (
                 <>
-                  <p className="text-xs text-slate-500 bg-fondo rounded-lg p-3">Cobra con tarjeta en tus cotizaciones. Conecta <strong>tu propia cuenta de Stripe</strong>: el dinero llega directo a ti.</p>
-                  <div><label className="label">Llave pública de Stripe</label><input className="input" placeholder="pk_live_..." value={form.publishable_key ?? ''} onChange={e => setForm({ ...form, publishable_key: e.target.value })} /></div>
+                  <p className="text-xs text-slate-500 bg-fondo rounded-lg p-3">{t('mod.pagosIntro')}</p>
+                  <div><label htmlFor="mod-llavePublica" className="label">{t('mod.llavePublica')}</label><input id="mod-llavePublica" className="input" placeholder="pk_live_..." value={form.publishable_key ?? ''} onChange={e => setForm({ ...form, publishable_key: e.target.value })} /></div>
                   <div>
-                    <label className="label">Llave secreta de Stripe</label>
-                    <input type="password" className="input" placeholder={integr['pagos']?.secreto ? '••• ya configurada' : 'sk_live_...'} value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} />
+                    <label htmlFor="mod-llaveSecreta" className="label">{t('mod.llaveSecreta')}</label>
+                    <input id="mod-llaveSecreta" type="password" className="input" placeholder={integr['pagos']?.secreto ? t('mod.yaConfigurada') : 'sk_live_...'} value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} />
                   </div>
                   <div className="pt-2 border-t border-slate-100">
-                    <label className="label">O usa un link de pago</label>
-                    <input className="input" placeholder="https://buy.stripe.com/... o Clip/Mercado Pago" value={form.link_pago ?? ''} onChange={e => setForm({ ...form, link_pago: e.target.value })} />
-                    <p className="text-[11px] text-slate-400 mt-1">Si prefieres no conectar llaves, pega un link de pago: aparecerá como botón en tus cotizaciones.</p>
+                    <label htmlFor="mod-oLinkPago" className="label">{t('mod.oLinkPago')}</label>
+                    <input id="mod-oLinkPago" className="input" placeholder="https://buy.stripe.com/... o Clip/Mercado Pago" value={form.link_pago ?? ''} onChange={e => setForm({ ...form, link_pago: e.target.value })} />
+                    <p className="text-[11px] text-slate-500 mt-1">{t('mod.linkPagoAyuda')}</p>
                   </div>
-                  <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer" className="text-xs text-primary-600 inline-flex items-center gap-1 hover:underline">Dónde encuentro mis llaves <ExternalLink className="w-3 h-3" /></a>
+                  <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer" className="text-xs text-primary-700 inline-flex items-center gap-1 hover:underline">{t('mod.dondeLlaves')} <ExternalLink className="w-3 h-3" aria-hidden="true" /></a>
                 </>
               )}
 
               {config.tipo === 'email' && (
                 <>
-                  <p className="text-xs text-slate-500 bg-fondo rounded-lg p-3">Envía las cotizaciones desde <strong>tu propio dominio</strong> en lugar del correo de la plataforma.</p>
-                  <div><label className="label">Servidor SMTP</label><input className="input" placeholder="smtp.tudominio.com" value={form.host ?? ''} onChange={e => setForm({ ...form, host: e.target.value })} /></div>
+                  <p className="text-xs text-slate-500 bg-fondo rounded-lg p-3">{t('mod.emailIntro')}</p>
+                  <div><label htmlFor="mod-servidorSmtp" className="label">{t('mod.servidorSmtp')}</label><input id="mod-servidorSmtp" className="input" placeholder="smtp.tudominio.com" value={form.host ?? ''} onChange={e => setForm({ ...form, host: e.target.value })} /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="label">Puerto</label><input className="input" value={form.puerto ?? '587'} onChange={e => setForm({ ...form, puerto: e.target.value })} /></div>
-                    <div><label className="label">Usuario</label><input className="input" value={form.usuario ?? ''} onChange={e => setForm({ ...form, usuario: e.target.value })} /></div>
+                    <div><label htmlFor="mod-puerto" className="label">{t('mod.puerto')}</label><input id="mod-puerto" inputMode="numeric" className="input" value={form.puerto ?? '587'} onChange={e => setForm({ ...form, puerto: e.target.value })} /></div>
+                    <div><label htmlFor="mod-usuario" className="label">{t('mod.usuario')}</label><input id="mod-usuario" className="input" value={form.usuario ?? ''} onChange={e => setForm({ ...form, usuario: e.target.value })} /></div>
                   </div>
-                  <div><label className="label">Contraseña</label><input type="password" className="input" placeholder={integr['email']?.secreto ? '••• ya configurada' : '•••'} value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} /></div>
+                  <div><label htmlFor="mod-contrasena" className="label">{t('mod.contrasena')}</label><input id="mod-contrasena" type="password" className="input" placeholder={integr['email']?.secreto ? t('mod.yaConfigurada') : '•••'} value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="label">From (correo)</label><input className="input" placeholder="ventas@tudominio.com" value={form.from_email ?? ''} onChange={e => setForm({ ...form, from_email: e.target.value })} /></div>
-                    <div><label className="label">From (nombre)</label><input className="input" value={form.from_nombre ?? ''} onChange={e => setForm({ ...form, from_nombre: e.target.value })} /></div>
+                    <div><label htmlFor="mod-fromEmail" className="label">{t('mod.fromEmail')}</label><input id="mod-fromEmail" className="input" placeholder="ventas@tudominio.com" value={form.from_email ?? ''} onChange={e => setForm({ ...form, from_email: e.target.value })} /></div>
+                    <div><label htmlFor="mod-fromNombre" className="label">{t('mod.fromNombre')}</label><input id="mod-fromNombre" className="input" value={form.from_nombre ?? ''} onChange={e => setForm({ ...form, from_nombre: e.target.value })} /></div>
                   </div>
                 </>
               )}
 
               <div className="flex gap-3 pt-1">
-                <button onClick={() => setConfig(null)} className="btn-secondary flex-1 justify-center">Cancelar</button>
+                <button onClick={() => setConfig(null)} className="btn-secondary flex-1 justify-center">{t('mod.cancelar')}</button>
                 <button onClick={guardarConfig} disabled={saving} className="btn-navy flex-1 justify-center">
-                  {saving ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-4 h-4" />} Guardar
+                  {saving ? <span role="status" aria-label="Cargando" className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-4 h-4" aria-hidden="true" />} {t('mod.guardar')}
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

@@ -15,3 +15,7 @@ dist/
 
 # PDFs de demo generados
 demo/*.pdf
+
+# Copias comprimidas del build para subir a Hostinger
+cotizago-dist.zip
+*.dist.zip

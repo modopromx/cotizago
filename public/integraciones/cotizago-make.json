@@ -1,0 +1,56 @@
+{
+  "name": "Cotiza Go — Crear cotización",
+  "flow": [
+    {
+      "id": 1,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "parameters": {
+        "handleErrors": false,
+        "useNewZLibDeCompress": true
+      },
+      "mapper": {
+        "url": "https://cotizago.com.mx/api-cotizaciones",
+        "method": "post",
+        "headers": [
+          { "name": "Authorization", "value": "Bearer cg_live_TU_LLAVE" },
+          { "name": "Content-Type", "value": "application/json" }
+        ],
+        "qs": [],
+        "bodyType": "raw",
+        "contentType": "application/json",
+        "data": "{\n  \"cliente\": { \"nombre\": \"Juan Pérez\", \"email\": \"juan@empresa.mx\", \"whatsapp\": \"5215512345678\" },\n  \"moneda\": \"MXN\",\n  \"items\": [\n    { \"nombre\": \"Servicio\", \"descripcion\": \"Detalle del servicio\", \"unidad\": \"servicio\", \"cantidad\": 1, \"precio_unitario\": 2500, \"iva_porcentaje\": 16, \"descuento_porcentaje\": 0 }\n  ]\n}",
+        "parseResponse": true,
+        "timeout": "",
+        "shareCookies": false,
+        "ca": "",
+        "rejectUnauthorized": true,
+        "followRedirect": true,
+        "useQuerystring": false,
+        "gzip": true,
+        "followAllRedirects": false
+      },
+      "metadata": {
+        "designer": { "x": 0, "y": 0 },
+        "restore": {},
+        "expect": []
+      }
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": { "orphans": [] },
+    "_instrucciones": "En Make: crea un escenario > menú (⋯) > Import Blueprint > sube este archivo. Luego abre el módulo HTTP y reemplaza 'cg_live_TU_LLAVE' por tu llave real."
+  }
+}

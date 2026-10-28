@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -13,12 +13,41 @@
   }
   h1, h2, h3, h4 {
     @apply font-semibold;
+    text-wrap: balance;
+  }
+  /* Superficies del navegador con la marca (selección, cursor de texto, foco). */
+  ::selection {
+    background: rgb(8 174 182 / 0.25);
+    color: #06213B;
+  }
+  input, textarea {
+    caret-color: #08AEB6;
+  }
+  :focus-visible {
+    outline: 2px solid #0a7176;
+    outline-offset: 2px;
+  }
+  /* Cifras de tablas y montos alineadas. */
+  table, .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Quien pidió menos movimiento en su sistema no ve animaciones decorativas. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 @layer components {
+  /* Turquesa de marca con texto navy: el blanco sobre #08AEB6 daba 2.7:1
+     (ilegible, WCAG pide 4.5:1); navy sobre turquesa da 6:1. */
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg font-medium text-sm hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-navy-900 rounded-lg font-semibold text-sm hover:bg-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-secondary {
     @apply inline-flex items-center gap-2 px-4 py-2 bg-white text-navy-700 border border-slate-200 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors;
@@ -29,8 +58,9 @@
   .btn-danger {
     @apply inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium text-sm hover:bg-red-700 transition-colors;
   }
+  /* 16px en celular: con 14px el iPhone hace zoom al tocar el campo. */
   .input {
-    @apply w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent bg-white placeholder-slate-400;
+    @apply w-full px-3 py-2 border border-slate-300 rounded-lg text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent bg-white placeholder-slate-500;
   }
   .label {
     @apply block text-sm font-medium text-navy-700 mb-1;
@@ -93,3 +123,22 @@
 ::-webkit-scrollbar-track { @apply bg-transparent; }
 ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+
+/* Globos guía del onboarding (driver.js) con la marca Cotiza Go */
+.driver-popover {
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(6, 33, 59, 0.28);
+  padding: 16px 18px;
+}
+.driver-popover-title { font-size: 15px; font-weight: 700; color: #06213B; }
+.driver-popover-description { font-size: 13px; color: #4A5A6A; line-height: 1.5; }
+.driver-popover-progress-text { color: #94a3b8; font-size: 11px; }
+.driver-popover-navigation-btns button.driver-popover-next-btn {
+  background: #08AEB6; color: #fff; border: none; text-shadow: none; border-radius: 8px; font-weight: 600; padding: 6px 12px;
+}
+.driver-popover-navigation-btns button.driver-popover-next-btn:hover { background: #069aa1; }
+.driver-popover-navigation-btns button.driver-popover-prev-btn {
+  border-radius: 8px; color: #64748b; text-shadow: none;
+}
+.driver-popover-close-btn { color: #94a3b8; }
+.driver-popover-arrow { border-color: #fff; }

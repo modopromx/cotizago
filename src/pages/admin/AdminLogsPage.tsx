@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatDatetime } from '../../lib/utils'
 import { ScrollText, RefreshCw, CreditCard, Mail, MessageCircle, Blocks, AlertTriangle, FileText } from 'lucide-react'
@@ -15,22 +16,21 @@ type Evento = {
   nivel: 'ok' | 'aviso' | 'error'
 }
 
-const META: Record<Evento['tipo'], { icono: any; etiqueta: string }> = {
-  pago:       { icono: CreditCard,    etiqueta: 'Pago' },
-  modulo:     { icono: Blocks,        etiqueta: 'Módulo' },
-  email:      { icono: Mail,          etiqueta: 'Email' },
-  whatsapp:   { icono: MessageCircle, etiqueta: 'WhatsApp' },
-  cotizacion: { icono: FileText,      etiqueta: 'Cotización' },
-  sistema:    { icono: ScrollText,    etiqueta: 'Sistema' },
+const ICONO: Record<Evento['tipo'], any> = {
+  pago: CreditCard, modulo: Blocks, email: Mail, whatsapp: MessageCircle, cotizacion: FileText, sistema: ScrollText,
+}
+const ETIQUETA_KEY: Record<Evento['tipo'], string> = {
+  pago: 'adm.logs.etPago', modulo: 'adm.logs.etModulo', email: 'adm.logs.etEmail', whatsapp: 'adm.logs.etWhatsApp', cotizacion: 'adm.logs.etCotizacion', sistema: 'adm.logs.etSistema',
 }
 
 const COLOR_NIVEL: Record<Evento['nivel'], string> = {
-  ok: 'bg-success-50 text-success-600',
-  aviso: 'bg-amber-50 text-amber-600',
-  error: 'bg-red-50 text-red-600',
+  ok: 'bg-success-50 text-success-700',
+  aviso: 'bg-amber-50 text-amber-700',
+  error: 'bg-red-50 text-red-700',
 }
 
 export default function AdminLogsPage() {
+  const { t } = useTranslation()
   const [eventos, setEventos] = useState<Evento[]>([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState<'todos' | Evento['tipo']>('todos')
@@ -52,10 +52,8 @@ export default function AdminLogsPage() {
       id: `pago-${p.id}`,
       fecha: p.created_at,
       tipo: 'pago',
-      titulo: p.tipo === 'modulo'
-        ? `Cobro de módulo · ${p.paquete_nombre ?? ''}`
-        : `Compra de folios · ${p.paquete_nombre ?? ''}`,
-      detalle: `${formatCurrency(p.monto, p.moneda)}${p.folios_cantidad ? ` · ${p.folios_cantidad} folios` : ''} · ${p.estado}`,
+      titulo: (p.tipo === 'modulo' ? t('adm.logs.cobroModulo') : t('adm.logs.compraFolios')) + ` · ${p.paquete_nombre ?? ''}`,
+      detalle: `${formatCurrency(p.monto, p.moneda)}${p.folios_cantidad ? ` · ${t('adm.logs.foliosSuf', { n: p.folios_cantidad })}` : ''} · ${p.estado}`,
       nivel: p.estado === 'pendiente' ? 'aviso' : 'ok',
     }))
 
@@ -63,10 +61,10 @@ export default function AdminLogsPage() {
       id: `mod-${m.id}`,
       fecha: m.fecha_contratacion ?? m.created_at,
       tipo: 'modulo',
-      titulo: `Módulo ${m.clave} · ${m.estado}`,
+      titulo: `${t('adm.logs.moduloPref')} ${m.clave} · ${m.estado}`,
       detalle: m.cancelar_al_terminar
-        ? 'Programado para cancelarse al terminar el periodo'
-        : m.periodo_fin ? `Renueva ${formatDatetime(m.periodo_fin)}` : undefined,
+        ? t('adm.logs.programadoCancelar')
+        : m.periodo_fin ? t('adm.logs.renueva', { fecha: formatDatetime(m.periodo_fin) }) : undefined,
       nivel: m.estado === 'morosa' ? 'error' : m.estado === 'cancelada' ? 'aviso' : 'ok',
     }))
 
@@ -74,7 +72,7 @@ export default function AdminLogsPage() {
       id: `mail-${e.id}`,
       fecha: e.created_at,
       tipo: 'email',
-      titulo: e.asunto || 'Correo enviado',
+      titulo: e.asunto || t('adm.logs.correoEnviado'),
       detalle: e.destinatario,
       nivel: e.estado === 'fallido' ? 'error' : 'ok',
     }))
@@ -83,7 +81,7 @@ export default function AdminLogsPage() {
       id: `wa-${w.id}`,
       fecha: w.created_at,
       tipo: 'whatsapp',
-      titulo: `Walinker · ${w.evento}`,
+      titulo: `${t('adm.logs.walinkerPref')} · ${w.evento}`,
       detalle: w.url ?? w.referencia ?? undefined,
       nivel: w.evento === 'link.error' ? 'error' : 'ok',
     }))
@@ -92,7 +90,7 @@ export default function AdminLogsPage() {
       id: `cot-${c.id}`,
       fecha: c.created_at,
       tipo: 'cotizacion',
-      titulo: `Cotización ${c.numero ?? ''} · ${c.estado ?? ''}`,
+      titulo: `${t('adm.logs.cotizacionPref')} ${c.numero ?? ''} · ${c.estado ?? ''}`,
       detalle: formatCurrency(c.total),
       nivel: 'ok',
     }))
@@ -120,36 +118,36 @@ export default function AdminLogsPage() {
   const errores = eventos.filter(e => e.nivel === 'error').length
 
   const filtros: Array<{ k: 'todos' | Evento['tipo']; label: string }> = [
-    { k: 'todos', label: 'Todo' },
-    { k: 'pago', label: 'Pagos' },
-    { k: 'modulo', label: 'Módulos' },
-    { k: 'cotizacion', label: 'Cotizaciones' },
-    { k: 'email', label: 'Email' },
-    { k: 'whatsapp', label: 'WhatsApp' },
+    { k: 'todos', label: t('adm.logs.fTodo') },
+    { k: 'pago', label: t('adm.logs.fPagos') },
+    { k: 'modulo', label: t('adm.logs.fModulos') },
+    { k: 'cotizacion', label: t('adm.logs.fCotizaciones') },
+    { k: 'email', label: t('adm.logs.fEmail') },
+    { k: 'whatsapp', label: t('adm.logs.fWhatsApp') },
   ]
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-navy-900">Auditoría</h1>
+          <h1 className="text-2xl font-bold text-navy-900">{t('adm.logs.title')}</h1>
           <p className="text-slate-500 text-sm">
-            Actividad de la plataforma: pagos, módulos, cotizaciones y envíos.
+            {t('adm.logs.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-4">
           {errores > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm text-red-600">
-              <AlertTriangle className="w-4 h-4" /> {errores} con error
+            <span className="inline-flex items-center gap-1.5 text-sm text-red-700">
+              <AlertTriangle className="w-4 h-4" aria-hidden="true" /> {t('adm.logs.conError', { n: errores })}
             </span>
           )}
-          <button onClick={load} className="btn-secondary"><RefreshCw className="w-4 h-4" /> Actualizar</button>
+          <button type="button" onClick={load} disabled={loading} aria-busy={loading} className="btn-secondary"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> {t('adm.logs.actualizar')}</button>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
         {filtros.map(f => (
-          <button key={f.k} onClick={() => setFiltro(f.k)}
+          <button key={f.k} type="button" onClick={() => setFiltro(f.k)} aria-pressed={filtro === f.k}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               filtro === f.k ? 'bg-navy-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
             }`}>
@@ -159,33 +157,34 @@ export default function AdminLogsPage() {
       </div>
 
       {loading ? (
-        <div className="card p-8 text-center text-slate-500 text-sm">Cargando...</div>
+        <div role="status" className="card p-8 text-center text-slate-500 text-sm">{t('adm.cargando')}</div>
       ) : visibles.length === 0 ? (
         <div className="card p-12 text-center">
-          <ScrollText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-navy-900 font-medium">Sin actividad registrada</p>
-          <p className="text-sm text-slate-400 mt-1">
+          <ScrollText className="w-10 h-10 text-slate-300 mx-auto mb-3" aria-hidden="true" />
+          <p className="text-navy-900 font-medium">{t('adm.logs.sinActividad')}</p>
+          <p className="text-sm text-slate-500 mt-1">
             {eventos.length === 0
-              ? 'Aquí aparecerán los pagos, módulos, cotizaciones y envíos conforme ocurran.'
-              : 'No hay eventos de ese tipo todavía.'}
+              ? t('adm.logs.aparecerActividad')
+              : t('adm.logs.noEventosTipo')}
           </p>
         </div>
       ) : (
         <div className="card divide-y divide-slate-100">
           {visibles.map(e => {
-            const { icono: Icon, etiqueta } = META[e.tipo]
+            const Icon = ICONO[e.tipo]
+            const etiqueta = t(ETIQUETA_KEY[e.tipo])
             return (
               <div key={e.id} className="flex items-start gap-3 px-5 py-3 hover:bg-slate-50">
-                <span className="w-8 h-8 rounded-lg bg-fondo flex items-center justify-center text-navy-700 shrink-0 mt-0.5">
+                <span aria-hidden="true" className="w-8 h-8 rounded-lg bg-fondo flex items-center justify-center text-navy-700 shrink-0 mt-0.5">
                   <Icon className="w-4 h-4" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-navy-900 truncate">{e.titulo}</p>
-                  {e.detalle && <p className="text-xs text-slate-400 truncate">{e.detalle}</p>}
+                  {e.detalle && <p className="text-xs text-slate-500 truncate">{e.detalle}</p>}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className={`badge ${COLOR_NIVEL[e.nivel]}`}>{etiqueta}</span>
-                  <span className="text-xs text-slate-400 tabular-nums hidden sm:block">{formatDatetime(e.fecha)}</span>
+                  <span className="text-xs text-slate-500 tabular-nums hidden sm:block">{formatDatetime(e.fecha)}</span>
                 </div>
               </div>
             )

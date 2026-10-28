@@ -1,0 +1,31 @@
+{
+  "_nota": "Zapier no importa archivos de configuración. Usa estos valores en la acción 'Webhooks by Zapier' con evento 'POST'. Reemplaza cg_live_TU_LLAVE por tu llave real (panel Cotiza Go → API / Integraciones).",
+  "accion": "Webhooks by Zapier",
+  "evento": "POST",
+  "url": "https://cotizago.com.mx/api-cotizaciones",
+  "payload_type": "json",
+  "headers": {
+    "Authorization": "Bearer cg_live_TU_LLAVE",
+    "Content-Type": "application/json"
+  },
+  "data": {
+    "cliente": {
+      "nombre": "Juan Pérez",
+      "email": "juan@empresa.mx",
+      "whatsapp": "5215512345678",
+      "empresa": "Empresa SA"
+    },
+    "moneda": "MXN",
+    "items": [
+      {
+        "nombre": "Servicio",
+        "descripcion": "Detalle del servicio",
+        "unidad": "servicio",
+        "cantidad": 1,
+        "precio_unitario": 2500,
+        "iva_porcentaje": 16,
+        "descuento_porcentaje": 0
+      }
+    ]
+  }
+}

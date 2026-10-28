@@ -1,7 +1,8 @@
 // Puente entre la base de datos y el generador de PDF.
 // Descarga una cotización (dueño) como PDF, o una nota de remisión.
 import { supabase } from './supabase'
-import { buildCotizacionPDF, buildNotaRemisionPDF, descargarPDF, type EmisorPDF, type NotaRemisionData } from './pdf'
+import { buildCotizacionPDF, buildNotaRemisionPDF, type EmisorPDF, type NotaRemisionData } from './pdf'
+import { descargarPDF } from './descarga'
 
 function empresaToEmisor(emp: any): EmisorPDF {
   return {
@@ -28,11 +29,11 @@ export async function descargarCotizacion(cotId: string) {
     items: items ?? [],
     publicUrl: `${window.location.origin}/c/${cot.token}`,
   })
-  descargarPDF(doc, `${cot.numero || 'cotizacion'}.pdf`)
+  return descargarPDF(doc, `${cot.numero || 'cotizacion'}.pdf`)
 }
 
 // Genera y descarga la nota de remisión (documento no fiscal).
 export async function descargarNotaRemision(d: NotaRemisionData) {
   const doc = await buildNotaRemisionPDF(d)
-  descargarPDF(doc, `nota-remision-${d.folio}.pdf`)
+  return descargarPDF(doc, `nota-remision-${d.folio}.pdf`)
 }

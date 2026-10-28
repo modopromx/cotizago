@@ -6,14 +6,22 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // 'prompt' y no 'autoUpdate': con autoUpdate el service worker toma el
-      // control y recarga la pestaña en cuanto detecta una version nueva, lo
-      // que puede pasar mientras alguien esta capturando una cotizacion y
-      // hacerle perder lo escrito. Aqui se le avisa y el usuario decide cuando.
-      registerType: 'prompt',
+      // 'autoUpdate': el service worker aplica la version nueva y recarga solo,
+      // sin molestar al usuario con un aviso. skipWaiting + clientsClaim hacen
+      // que el nuevo SW tome control de inmediato.
+      registerType: 'autoUpdate',
+      // No inyectar el script de registro (workbox). La app ya no registra el SW;
+      // en Safari iOS ese registro lanzaba «InvalidStateError: newestWorker is null».
+      // La limpieza de SW/cachés viejos la hace AvisoActualizacion con la API nativa.
+      injectRegister: false,
+      // Service Worker AUTODESTRUCTIVO: en vez de cachear, se desregistra solo y
+      // borra cachés viejos. Elimina de raíz los problemas de "versión vieja
+      // pegada" que rompían el portal de facturación embebido. La app siempre
+      // carga la última versión desde el servidor. (Se quita la PWA/offline, que
+      // no se usaba; reversible si se quiere reactivar bien configurada.)
+      selfDestroying: true,
       includeAssets: [
-        'icon.svg', 'cotiza-go-logo.png', 'logo-icon.svg',
-        'apple-touch-icon.png', 'favicon-32x32.png',
+        'cotiza-go-logo-v2.png', 'apple-touch-icon.png', 'favicon-32x32.png',
       ],
       manifest: {
         name: 'Cotiza Go — Cotizaciones profesionales',
@@ -34,7 +42,6 @@ export default defineConfig({
           { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
         shortcuts: [
           { name: 'Nueva cotización', short_name: 'Cotizar', url: '/app/cotizaciones/nueva' },
@@ -46,8 +53,10 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
-        // Nunca cachear la API de Supabase: los datos deben venir frescos.
-        navigateFallbackDenylist: [/^\/api/, /supabase\.co/],
+        // Nunca cachear la API de Supabase ni el portal público de facturación:
+        // /facturar debe cargar SIEMPRE en vivo (va embebido en el sitio de cada
+        // negocio y los clientes deben ver la última versión al instante, sin caché).
+        navigateFallbackDenylist: [/^\/api/, /supabase\.co/, /^\/facturar/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
@@ -65,8 +74,9 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
-          charts: ['recharts'],
-          pdf: ['jspdf', 'jspdf-autotable', 'qrcode'],
+          // recharts y jspdf NO van aquí: un chunk manual arrastra sus helpers
+          // compartidos y la portada terminaba precargando el PDF. Sin forzarlos,
+          // Rollup los deja en trozos que solo bajan las páginas que los usan.
         },
       },
     },

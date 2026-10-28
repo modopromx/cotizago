@@ -1,51 +1,26 @@
-// Aviso de version nueva de la PWA.
-//
-// El service worker se registra en modo 'prompt': cuando hay una version nueva
-// NO se recarga sola. Si lo hiciera, podria recargar la pestana justo mientras
-// alguien captura una cotizacion y perderia lo escrito. Aqui se le avisa y el
-// usuario decide cuando aplicarla.
-//
-// NOTA: el aviso "Lista para usar sin internet" (offlineReady) se quito a
-// proposito: aparecia en cada visita y molestaba. Solo dejamos el aviso util,
-// el de version nueva. El registro del SW se mantiene igual (la PWA sigue
-// funcionando offline), solo no se anuncia.
-import { useRegisterSW } from 'virtual:pwa-register/react'
-import { RefreshCw, X } from 'lucide-react'
+// La PWA/Service Worker se retiró (antes causaba versiones viejas cacheadas).
+// Este componente YA NO usa workbox (useRegisterSW) — en Safari iOS lanzaba
+// «InvalidStateError: newestWorker is null» al no existir ya el worker.
+// En su lugar, hace una limpieza directa y silenciosa: desregistra cualquier
+// Service Worker viejo y borra sus cachés, para que todos vean siempre la última
+// versión. Es idempotente y seguro (no hace nada si ya está limpio).
+import { useEffect } from 'react'
 
 export default function AvisoActualizacion() {
-  const {
-    needRefresh: [hayVersionNueva, setHayVersionNueva],
-    updateServiceWorker,
-  } = useRegisterSW()
+  useEffect(() => {
+    ;(async () => {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations()
+          for (const r of regs) { try { await r.unregister() } catch { /* ignorar */ } }
+        }
+        if (typeof caches !== 'undefined') {
+          const keys = await caches.keys()
+          for (const k of keys) { try { await caches.delete(k) } catch { /* ignorar */ } }
+        }
+      } catch { /* silencioso: nunca debe romper la app */ }
+    })()
+  }, [])
 
-  if (!hayVersionNueva) return null
-
-  return (
-    <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-80 z-[60]">
-      <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-4">
-        <div className="flex items-start gap-3">
-          <span className="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center shrink-0">
-            <RefreshCw className="w-4 h-4" />
-          </span>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-navy-900">Hay una versión nueva</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Guarda lo que estés haciendo antes de actualizar.
-            </p>
-          </div>
-          <button onClick={() => setHayVersionNueva(false)} className="text-slate-400 hover:text-slate-600">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex gap-2 mt-3">
-          <button onClick={() => setHayVersionNueva(false)} className="btn-secondary flex-1 justify-center text-xs">
-            Ahora no
-          </button>
-          <button onClick={() => updateServiceWorker(true)} className="btn-navy flex-1 justify-center text-xs">
-            Actualizar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+  return null
 }

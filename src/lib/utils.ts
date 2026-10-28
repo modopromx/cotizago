@@ -12,13 +12,25 @@ export function formatCurrency(amount: number, currency = 'MXN') {
   }).format(amount)
 }
 
+/**
+ * Convierte a Date respetando las fechas SIN hora. `new Date('2026-10-28')` se
+ * interpreta como medianoche UTC, que en México (UTC-6) es el día ANTERIOR: por
+ * eso fecha_emision / fecha_vencimiento salían un día antes en pantalla, lista,
+ * PDF y correo. Una fecha «AAAA-MM-DD» se toma como ese día en la hora local.
+ */
+export function aFecha(date: string | Date): Date {
+  if (date instanceof Date) return date
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(date)
+}
+
 export function formatDate(date: string | Date) {
   if (!date) return ''
   return new Intl.DateTimeFormat('es-MX', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(date))
+  }).format(aFecha(date))
 }
 
 export function formatDatetime(date: string | Date) {
@@ -29,7 +41,7 @@ export function formatDatetime(date: string | Date) {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(date))
+  }).format(aFecha(date))
 }
 
 export const ESTADO_COLORS: Record<string, string> = {

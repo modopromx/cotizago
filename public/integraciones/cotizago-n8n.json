@@ -1,0 +1,48 @@
+{
+  "name": "Cotiza Go — Crear cotización",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b1a1e000-0000-4000-8000-000000000001",
+      "name": "Inicio",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cotizago.com.mx/api-cotizaciones",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer cg_live_TU_LLAVE" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"cliente\": { \"nombre\": \"Juan Pérez\", \"email\": \"juan@empresa.mx\", \"whatsapp\": \"5215512345678\" },\n  \"moneda\": \"MXN\",\n  \"items\": [\n    { \"nombre\": \"Servicio\", \"descripcion\": \"Detalle del servicio\", \"unidad\": \"servicio\", \"cantidad\": 1, \"precio_unitario\": 2500, \"iva_porcentaje\": 16, \"descuento_porcentaje\": 0 }\n  ]\n}",
+        "options": {}
+      },
+      "id": "b1a1e000-0000-4000-8000-000000000002",
+      "name": "Cotiza Go — Crear cotización",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    }
+  ],
+  "connections": {
+    "Inicio": {
+      "main": [
+        [
+          { "node": "Cotiza Go — Crear cotización", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "meta": {
+    "_instrucciones": "Importa este archivo en n8n (menú ⋯ → Import from File). Luego abre el nodo y reemplaza 'cg_live_TU_LLAVE' por tu llave real (panel → API / Integraciones)."
+  }
+}

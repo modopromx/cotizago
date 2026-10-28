@@ -1,9 +1,22 @@
-# CotizaGo — routing SPA en Hostinger (Apache / LiteSpeed)
+# CotizaGo — routing SPA + seguridad en Hostinger (Apache / LiteSpeed)
 # Sin esto, recargar /app/clientes devuelve 404: Apache busca un archivo que no
 # existe. React Router necesita que todas las rutas lleguen a index.html.
 
-Options -MultiViews
+Options -MultiViews -Indexes
+ServerSignature Off
 RewriteEngine On
+
+# Forzar HTTPS siempre (evita conexiones sin cifrar)
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# API pública de Cotiza Go: la URL con dominio propio /api-cotizaciones se
+# reenvía (proxy PHP) a la función real, que queda oculta. Primero nos
+# aseguramos de que el header Authorization llegue a PHP (algunos servidores lo
+# omiten), luego mandamos la ruta al proxy.
+RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteRule ^api-cotizaciones/?$ api-cotizaciones.php [L]
 
 # Archivos y carpetas reales se sirven tal cual
 RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -14,16 +27,46 @@ RewriteRule ^ - [L]
 RewriteRule ^ index.html [QSA,L]
 
 # ---------------------------------------------------------------------------
+# Cabeceras de seguridad
+# ---------------------------------------------------------------------------
+<IfModule mod_headers.c>
+  # HSTS: el navegador solo usará HTTPS durante 1 año
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  # Evita que el navegador "adivine" tipos de archivo (mitiga XSS)
+  Header always set X-Content-Type-Options "nosniff"
+  # Anti-clickjacking: se controla con CSP frame-ancestors (abajo), que sí acepta
+  # una lista de orígenes. No usamos X-Frame-Options porque solo permite DENY/
+  # SAMEORIGIN (ALLOW-FROM está obsoleto) y necesitamos autorizar al portal de
+  # facturación embebido dentro de fidelizalo.com.mx.
+  Header always unset X-Frame-Options
+  # No filtrar la ruta completa a sitios externos
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # Desactiva APIs del navegador que la app no usa. `payment` se permite además a
+  # los iframes de Stripe: el cobro va EMBEBIDO (Embedded Checkout) y con solo
+  # (self) el navegador escondía Apple Pay y Google Pay dentro del iframe.
+  Header always set Permissions-Policy 'geolocation=(), microphone=(), camera=(), usb=(), payment=(self "https://js.stripe.com" "https://checkout.stripe.com")'
+  # Content Security Policy: solo se cargan recursos de orígenes conocidos.
+  # frame-ancestors autoriza SOLO a fidelizalo.com.mx a incrustar el portal de
+  # facturación; cualquier otro sitio sigue bloqueado.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://js.stripe.com https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.stripe.com https://challenges.cloudflare.com https://cloudflareinsights.com https://static.cloudflareinsights.com https://*.sentry.io; frame-src https://*.stripe.com https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self' https://fidelizalo.com.mx; upgrade-insecure-requests"
+</IfModule>
+
+# ---------------------------------------------------------------------------
+# Bloquear archivos sensibles por si algún día llegan al servidor
+# ---------------------------------------------------------------------------
+<FilesMatch "(^\.|\.(env|map|log|sh|bak|sql|yml|yaml|toml|lock|md)$)">
+  Require all denied
+</FilesMatch>
+
+# ---------------------------------------------------------------------------
 # Caché
-# Los assets de /assets/ llevan hash en el nombre: cambian de nombre en cada
-# despliegue, así que pueden cachearse para siempre sin riesgo.
-# NO pasa lo mismo con index.html, sw.js, registerSW.js ni el manifiesto: esos
-# conservan el mismo nombre entre versiones. Si se cachean, el navegador se
-# queda con la versión vieja y el usuario nunca recibe una actualización.
+# Los assets de /assets/ llevan hash en el nombre: cambian en cada despliegue,
+# así que pueden cachearse para siempre. index.html, sw.js, registerSW.js y el
+# manifiesto NO: si se cachean, el usuario nunca recibe una actualización.
 # ---------------------------------------------------------------------------
 <IfModule mod_expires.c>
   ExpiresActive On
-  <FilesMatch "\.(js|css|woff2|png|jpg|jpeg|svg|webp|ico)$">
+  <FilesMatch "^(?!sw\.js$|registerSW\.js$).+\.(js|css|woff2|png|jpg|jpeg|svg|webp|ico)$">
     ExpiresDefault "access plus 1 year"
   </FilesMatch>
   <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest)$">
@@ -35,11 +78,10 @@ RewriteRule ^ index.html [QSA,L]
   <FilesMatch "^(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
   </FilesMatch>
-  <FilesMatch "\.(js|css|woff2|png|jpg|jpeg|svg|webp|ico)$">
+  <FilesMatch "^(?!sw\.js$|registerSW\.js$).+\.(js|css|woff2|png|jpg|jpeg|svg|webp|ico)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
   # El service worker solo puede controlar su propio directorio hacia abajo.
-  # Estando en la raíz esto no hace falta, pero deja el ámbito explícito.
   <Files "sw.js">
     Header set Service-Worker-Allowed "/"
   </Files>

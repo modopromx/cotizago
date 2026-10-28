@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
-import { formatCurrency, formatDate, ESTADO_COLORS, ESTADO_LABELS } from '../../lib/utils'
+import { formatCurrency, formatDate, ESTADO_COLORS } from '../../lib/utils'
 import { Search, FileText, Eye, ExternalLink } from 'lucide-react'
 
 export default function AdminCotizacionesPage() {
+  const { t } = useTranslation()
+  const estLabel = (s: string) => t(`estado.${s}`, { defaultValue: s })
   const [cotizaciones, setCotizaciones] = useState<any[]>([])
   const [empresas, setEmpresas] = useState<Record<string, string>>({})
   const [search, setSearch] = useState('')
@@ -45,52 +48,52 @@ export default function AdminCotizacionesPage() {
   const vistas = cotizaciones.reduce((s, c) => s + (Number(c.visto_count) || 0), 0)
 
   const kpis = [
-    { label: 'Cotizaciones emitidas', value: cotizaciones.length },
-    { label: 'Monto cotizado', value: formatCurrency(montoTotal) },
+    { label: t('adm.cot.kEmitidas'), value: cotizaciones.length },
+    { label: t('adm.cot.kMonto'), value: formatCurrency(montoTotal) },
     {
-      label: 'Aceptadas',
+      label: t('adm.cot.kAceptadas'),
       value: aceptadas.length,
-      sub: cotizaciones.length ? `${Math.round(aceptadas.length / cotizaciones.length * 100)}% · ${formatCurrency(montoAceptado)}` : '—',
+      sub: cotizaciones.length ? t('adm.cot.aceptPct', { pct: Math.round(aceptadas.length / cotizaciones.length * 100), monto: formatCurrency(montoAceptado) }) : '—',
     },
-    { label: 'Vistas de clientes', value: vistas },
+    { label: t('adm.cot.kVistas'), value: vistas },
   ]
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-navy-900">Cotizaciones globales</h1>
-        <p className="text-slate-500 text-sm">Todo lo que emiten tus usuarios, con su tasa de aceptación.</p>
+        <h1 className="text-2xl font-bold text-navy-900">{t('adm.cot.title')}</h1>
+        <p className="text-slate-500 text-sm">{t('adm.cot.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map(k => (
           <div key={k.label} className="card p-4">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 font-medium">{k.label}</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-500 font-medium">{k.label}</p>
             <p className="text-xl font-extrabold text-navy-900 mt-1">{loading ? '—' : k.value}</p>
-            {k.sub && <p className="text-[11px] text-slate-400 mt-0.5">{k.sub}</p>}
+            {k.sub && <p className="text-[11px] text-slate-500 mt-0.5">{k.sub}</p>}
           </div>
         ))}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input className="input pl-9" placeholder="Buscar por folio, cliente o empresa..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" aria-hidden="true" />
+          <input className="input pl-9" type="search" aria-label={t('adm.cot.buscar')} placeholder={t('adm.cot.buscar')} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="input sm:w-52" value={estado} onChange={e => setEstado(e.target.value)}>
-          <option value="todos">Todos los estados</option>
-          {estados.map(s => <option key={s} value={s}>{ESTADO_LABELS[s] ?? s}</option>)}
+        <select className="input sm:w-52" aria-label={t('adm.cot.colEstado')} value={estado} onChange={e => setEstado(e.target.value)}>
+          <option value="todos">{t('adm.cot.todosEstados')}</option>
+          {estados.map(s => <option key={s} value={s}>{estLabel(s)}</option>)}
         </select>
       </div>
 
       {loading ? (
-        <div className="card p-8 text-center text-slate-500 text-sm">Cargando...</div>
+        <div role="status" className="card p-8 text-center text-slate-500 text-sm">{t('adm.cargando')}</div>
       ) : filtered.length === 0 ? (
         <div className="card p-12 text-center">
-          <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-navy-900 font-medium">{cotizaciones.length === 0 ? 'Aún no hay cotizaciones' : 'Sin resultados'}</p>
-          <p className="text-sm text-slate-400 mt-1">
-            {cotizaciones.length === 0 ? 'Aparecerán aquí conforme tus usuarios las emitan.' : 'Prueba con otro filtro.'}
+          <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" aria-hidden="true" />
+          <p className="text-navy-900 font-medium">{cotizaciones.length === 0 ? t('adm.cot.sinCotis') : t('adm.cot.sinResultados')}</p>
+          <p className="text-sm text-slate-500 mt-1">
+            {cotizaciones.length === 0 ? t('adm.cot.aparecerAqui') : t('adm.cot.otroFiltro')}
           </p>
         </div>
       ) : (
@@ -98,15 +101,15 @@ export default function AdminCotizacionesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 bg-slate-50/60">
-                  <th className="px-6 py-3 font-medium">Folio</th>
-                  <th className="px-4 py-3 font-medium">Empresa</th>
-                  <th className="px-4 py-3 font-medium">Cliente</th>
-                  <th className="px-4 py-3 font-medium">Total</th>
-                  <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="px-4 py-3 font-medium">Vistas</th>
-                  <th className="px-4 py-3 font-medium">Fecha</th>
-                  <th className="px-4 py-3" />
+                <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 bg-slate-50/60">
+                  <th className="px-6 py-3 font-medium">{t('adm.cot.colFolio')}</th>
+                  <th className="px-4 py-3 font-medium">{t('adm.cot.colEmpresa')}</th>
+                  <th className="px-4 py-3 font-medium">{t('adm.cot.colCliente')}</th>
+                  <th className="px-4 py-3 font-medium">{t('adm.cot.colTotal')}</th>
+                  <th className="px-4 py-3 font-medium">{t('adm.cot.colEstado')}</th>
+                  <th className="px-4 py-3 font-medium">{t('adm.cot.colVistas')}</th>
+                  <th className="px-4 py-3 font-medium">{t('adm.cot.colFecha')}</th>
+                  <th className="px-4 py-3"><span className="sr-only">{t('adm.cot.ttVer')}</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -118,21 +121,22 @@ export default function AdminCotizacionesPage() {
                     <td className="px-4 py-3 font-semibold text-navy-900">{formatCurrency(c.total, c.moneda)}</td>
                     <td className="px-4 py-3">
                       <span className={`badge ${ESTADO_COLORS[c.estado] ?? 'bg-slate-100 text-slate-600'}`}>
-                        {ESTADO_LABELS[c.estado] ?? c.estado}
+                        {estLabel(c.estado)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 text-slate-500">
-                        <Eye className="w-3.5 h-3.5 text-slate-400" />{c.visto_count ?? 0}
+                        <Eye className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />{c.visto_count ?? 0}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(c.fecha_emision)}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{formatDate(c.fecha_emision)}</td>
                     <td className="px-4 py-3 text-right">
                       {c.token && (
                         <a href={`/c/${c.token}`} target="_blank" rel="noreferrer"
-                          title="Ver como la ve el cliente"
-                          className="inline-flex p-1.5 text-slate-400 hover:text-navy-700 hover:bg-slate-100 rounded-lg">
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          title={t('adm.cot.ttVer')}
+                          aria-label={`${t('adm.cot.ttVer')}: ${c.numero} (se abre en otra pestaña)`}
+                          className="inline-flex p-1.5 text-slate-500 hover:text-navy-700 hover:bg-slate-100 rounded-lg">
+                          <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                         </a>
                       )}
                     </td>

@@ -11,11 +11,13 @@ interface LogoProps {
   variant?: 'color' | 'white' | 'chip'
 }
 
-export default function Logo({ className = 'h-8', variant = 'color' }: LogoProps) {
+export default function Logo({ className = 'h-12', variant = 'color' }: LogoProps) {
   const img = (
     <img
-      src="/cotiza-go-logo.png"
+      src="/cotiza-go-logo-v2.png"
       alt="Cotiza Go"
+      width={640}
+      height={124}
       className={`w-auto ${className}`}
       style={variant === 'white' ? { filter: 'brightness(0) invert(1)' } : undefined}
     />
