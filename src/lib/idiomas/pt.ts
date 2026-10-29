@@ -111,7 +111,7 @@ const pt: Dic = {
     mockHi: 'Olá, Alan 👋', mockNueva: 'Nova cotação', mockCotizado: 'Cotado este mês', mockAceptacion: 'Aceitação', mockRecientes: 'Cotações recentes', mockEnviada: 'Enviada',
   },
   priv: {
-    eliminarT: 'Excluir sua conta', eliminarD: 'Você pode pedir a exclusão da sua conta e dos seus dados no menu do seu perfil ou em', volver: 'Voltar ao início', title: 'Aviso de privacidade', actualizado: 'Última atualização: julho de 2026',
+    eliminarT: 'Excluir sua conta', eliminarD: 'Você pode excluir na hora sua conta e seus dados no menu do seu perfil ou em', volver: 'Voltar ao início', title: 'Aviso de privacidade', actualizado: 'Última atualização: julho de 2026',
     intro: 'Na Cotiza Go (ModoPro) valorizamos sua privacidade. Este aviso explica quais dados coletamos, como os usamos e quais direitos você tem sobre eles.',
     s1t: '1. Responsável', s1d: 'O responsável pelo tratamento dos seus dados pessoais é a Cotiza Go, operada pela ModoPro. Para qualquer assunto de privacidade, escreva para contacto@cotizago.com.mx.',
     s2t: '2. Dados que coletamos', s2d: 'Coletamos os dados que você fornece ao criar sua conta e usar o serviço: nome, empresa, telefone, e-mail, dados fiscais (para faturamento) e as informações das cotações e clientes que você registra. Também coletamos dados técnicos de uso (como registros de acesso) para operar e melhorar a plataforma.',
@@ -205,7 +205,7 @@ const pt: Dic = {
     cancelar: 'Cancelar', guardar: 'Salvar', crear: 'Criar item',
     actualizado: 'Produto atualizado', creado: 'Produto criado', confEliminar: 'Excluir produto?', eliminado: 'Produto excluído',
   },
-  app: { misFolios: 'Meus fólios', noDisponible: 'A compra de fólios e módulos não está disponível no app.' },
+  app: { volver: 'Voltar ao painel', misFolios: 'Meus fólios', noDisponible: 'A compra de fólios e módulos não está disponível no app.' },
   fol: {
     pagoOxxo: 'Seu boleto OXXO está pronto. Seus créditos são adicionados automaticamente quando você pagar na loja (até 1 dia útil).', pagoRecibido: 'Pagamento recebido! Creditando seus créditos...', pagoCancelado: 'Pagamento cancelado.',
     pagosNoActivos: 'Pagamentos online ainda não ativados. Fale conosco para receber seu link de pagamento.',

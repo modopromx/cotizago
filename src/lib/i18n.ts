@@ -121,7 +121,7 @@ const es = {
     mockHi: 'Hola, Alan 👋', mockNueva: 'Nueva cotización', mockCotizado: 'Cotizado este mes', mockAceptacion: 'Aceptación', mockRecientes: 'Cotizaciones recientes', mockEnviada: 'Enviada',
   },
   priv: {
-    eliminarT: 'Eliminar tu cuenta', eliminarD: 'Puedes pedir que borremos tu cuenta y tus datos desde el menú de tu perfil o en', volver: 'Volver al inicio', title: 'Aviso de privacidad', actualizado: 'Última actualización: julio 2026',
+    eliminarT: 'Eliminar tu cuenta', eliminarD: 'Puedes eliminar al instante tu cuenta y tus datos desde el menú de tu perfil o en', volver: 'Volver al inicio', title: 'Aviso de privacidad', actualizado: 'Última actualización: julio 2026',
     intro: 'En Cotiza Go (ModoPro) valoramos tu privacidad. Este aviso explica qué datos recabamos, cómo los usamos y qué derechos tienes sobre ellos.',
     s1t: '1. Responsable', s1d: 'El responsable del tratamiento de tus datos personales es Cotiza Go, operado por ModoPro. Para cualquier tema de privacidad puedes escribirnos a contacto@cotizago.com.mx.',
     s2t: '2. Datos que recabamos', s2d: 'Recabamos los datos que nos proporcionas al crear tu cuenta y usar el servicio: nombre, empresa, teléfono, correo electrónico, datos fiscales (para facturación) y la información de las cotizaciones y clientes que registras. También recabamos datos de uso técnico (por ejemplo, registros de acceso) para operar y mejorar la plataforma.',
@@ -215,7 +215,7 @@ const es = {
     cancelar: 'Cancelar', guardar: 'Guardar', crear: 'Crear concepto',
     actualizado: 'Producto actualizado', creado: 'Producto creado', confEliminar: '¿Eliminar producto?', eliminado: 'Producto eliminado',
   },
-  app: { misFolios: 'Mis folios', noDisponible: 'La compra de folios y módulos no está disponible en la app.' },
+  app: { volver: 'Volver al panel', misFolios: 'Mis folios', noDisponible: 'La compra de folios y módulos no está disponible en la app.' },
   fol: {
     pagoOxxo: 'Tu ficha OXXO está lista. Tus folios se acreditan solos cuando pagues en tienda (puede tardar hasta 1 día hábil).', pagoRecibido: '¡Pago recibido! Acreditando tus folios...', pagoCancelado: 'Pago cancelado.',
     pagosNoActivos: 'Pagos en línea aún no activados. Escríbenos para tu link de pago.',

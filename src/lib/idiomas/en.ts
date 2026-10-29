@@ -111,7 +111,7 @@ const en: Dic = {
     mockHi: 'Hi, Alan 👋', mockNueva: 'New quote', mockCotizado: 'Quoted this month', mockAceptacion: 'Acceptance', mockRecientes: 'Recent quotes', mockEnviada: 'Sent',
   },
   priv: {
-    eliminarT: 'Delete your account', eliminarD: 'You can ask us to delete your account and data from your profile menu or at', volver: 'Back to home', title: 'Privacy notice', actualizado: 'Last updated: July 2026',
+    eliminarT: 'Delete your account', eliminarD: 'You can instantly delete your account and data from your profile menu or at', volver: 'Back to home', title: 'Privacy notice', actualizado: 'Last updated: July 2026',
     intro: 'At Cotiza Go (ModoPro) we value your privacy. This notice explains what data we collect, how we use it and what rights you have over it.',
     s1t: '1. Controller', s1d: 'The party responsible for processing your personal data is Cotiza Go, operated by ModoPro. For any privacy matter you can write to contacto@cotizago.com.mx.',
     s2t: '2. Data we collect', s2d: 'We collect the data you provide when creating your account and using the service: name, company, phone, email, tax details (for invoicing) and the information of the quotes and clients you register. We also collect technical usage data (such as access logs) to operate and improve the platform.',
@@ -205,7 +205,7 @@ const en: Dic = {
     cancelar: 'Cancel', guardar: 'Save', crear: 'Create item',
     actualizado: 'Product updated', creado: 'Product created', confEliminar: 'Delete product?', eliminado: 'Product deleted',
   },
-  app: { misFolios: 'My folios', noDisponible: 'Buying folios and modules is not available in the app.' },
+  app: { volver: 'Back to dashboard', misFolios: 'My folios', noDisponible: 'Buying folios and modules is not available in the app.' },
   fol: {
     pagoOxxo: 'Your OXXO voucher is ready. Your credits are added automatically once you pay at the store (up to 1 business day).', pagoRecibido: 'Payment received! Crediting your credits...', pagoCancelado: 'Payment cancelled.',
     pagosNoActivos: 'Online payments not active yet. Message us for your payment link.',

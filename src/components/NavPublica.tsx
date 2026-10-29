@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { Menu, X } from 'lucide-react'
 import Logo from './Logo'
 import SelectorIdioma from './SelectorIdioma'
+import { enApp } from '../lib/enApp'
 
 const NAV = [
   { key: 'nav.features', href: '/#funciones' },
@@ -25,6 +26,20 @@ export default function NavPublica() {
     document.addEventListener('keydown', tecla)
     return () => document.removeEventListener('keydown', tecla)
   }, [open])
+
+  // App de Android: sin Paquetes (precios) ni «Comenzar ahora» (política de
+  // Google Play); solo volver al panel.
+  if (enApp()) return (
+    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-100">
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <Link to="/app" aria-label="Cotiza Go" className="hover:opacity-80 transition-opacity"><Logo className="h-10" /></Link>
+        <div className="flex items-center gap-2">
+          <SelectorIdioma />
+          <Link to="/app" className="btn-navy">{t('app.volver')}</Link>
+        </div>
+      </div>
+    </header>
+  )
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-100">

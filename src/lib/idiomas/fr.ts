@@ -111,7 +111,7 @@ const fr: Dic = {
     mockHi: 'Bonjour, Alan 👋', mockNueva: 'Nouveau devis', mockCotizado: 'Devisé ce mois-ci', mockAceptacion: 'Acceptation', mockRecientes: 'Devis récents', mockEnviada: 'Envoyé',
   },
   priv: {
-    eliminarT: 'Supprimer votre compte', eliminarD: 'Vous pouvez demander la suppression de votre compte et de vos données depuis le menu de votre profil ou sur', volver: 'Retour à l\'accueil', title: 'Avis de confidentialité', actualizado: 'Dernière mise à jour : juillet 2026',
+    eliminarT: 'Supprimer votre compte', eliminarD: 'Vous pouvez supprimer immédiatement votre compte et vos données depuis le menu de votre profil ou sur', volver: 'Retour à l\'accueil', title: 'Avis de confidentialité', actualizado: 'Dernière mise à jour : juillet 2026',
     intro: 'Chez Cotiza Go (ModoPro), nous respectons votre vie privée. Cet avis explique quelles données nous collectons, comment nous les utilisons et quels sont vos droits.',
     s1t: '1. Responsable', s1d: 'Le responsable du traitement de vos données personnelles est Cotiza Go, exploité par ModoPro. Pour toute question de confidentialité, écrivez à contacto@cotizago.com.mx.',
     s2t: '2. Données que nous collectons', s2d: 'Nous collectons les données que vous fournissez lors de la création de votre compte et de l\'utilisation du service : nom, entreprise, téléphone, e-mail, données fiscales (pour la facturation) et les informations des devis et clients que vous enregistrez. Nous collectons aussi des données techniques d\'usage (comme les journaux d\'accès) pour exploiter et améliorer la plateforme.',
@@ -205,7 +205,7 @@ const fr: Dic = {
     cancelar: 'Annuler', guardar: 'Enregistrer', crear: 'Créer l’élément',
     actualizado: 'Produit mis à jour', creado: 'Produit créé', confEliminar: 'Supprimer le produit ?', eliminado: 'Produit supprimé',
   },
-  app: { misFolios: 'Mes folios', noDisponible: 'L’achat de folios et de modules n’est pas disponible dans l’application.' },
+  app: { volver: 'Retour au tableau de bord', misFolios: 'Mes folios', noDisponible: 'L’achat de folios et de modules n’est pas disponible dans l’application.' },
   fol: {
     pagoOxxo: 'Votre bon OXXO est prêt. Vos crédits sont ajoutés automatiquement après le paiement en magasin (jusqu’à 1 jour ouvré).', pagoRecibido: 'Paiement reçu ! Créditation de vos crédits...', pagoCancelado: 'Paiement annulé.',
     pagosNoActivos: 'Paiements en ligne pas encore activés. Écrivez-nous pour votre lien de paiement.',
