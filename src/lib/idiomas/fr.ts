@@ -245,7 +245,7 @@ const fr: Dic = {
     tuNumeroWa: 'Votre numéro WhatsApp', phoneId: 'Phone Number ID', tokenAcceso: 'Jeton d’accès', metaAviso: 'Meta Cloud API exige un compte vérifié et des modèles approuvés.',
     pagosIntro: 'Encaissez par carte sur vos devis. Connectez votre propre compte Stripe : l’argent vous revient directement.',
     llavePublica: 'Clé publique Stripe', llaveSecreta: 'Clé secrète Stripe', yaConfigurada: '••• déjà configurée',
-    oLinkPago: 'Ou utilisez un lien de paiement', linkPagoAyuda: 'Si vous préférez ne pas connecter de clés, collez un lien de paiement : il apparaîtra comme bouton sur vos devis.', dondeLlaves: 'Où trouver mes clés',
+    oLinkPago: 'Ou utilisez un lien de paiement', linkPagoAyuda: 'Si vous préférez ne pas connecter de clés, collez un lien de paiement : il apparaîtra comme bouton sur vos devis.', probar: 'Tester la connexion', probarCorreo: 'Envoyer un e-mail de test', probando: 'Test en cours…', pruebaAyuda: 'Vous pouvez tester avant d’enregistrer : nous utilisons ce que vous avez saisi.', pruebaCorreoOk: 'C’est fait : nous avons envoyé un e-mail de test à {{para}} avec le design que verront vos clients. Vérifiez votre boîte (et les spams).', abrirWa: 'Ouvrir mon WhatsApp', dondeLlaves: 'Où trouver mes clés',
     emailIntro: 'Envoyez les devis depuis votre propre domaine au lieu de l’e-mail de la plateforme.',
     servidorSmtp: 'Serveur SMTP', puerto: 'Port', usuario: 'Utilisateur', contrasena: 'Mot de passe', fromEmail: 'De (e-mail)', fromNombre: 'De (nom)',
     guardar: 'Enregistrer',

@@ -245,7 +245,7 @@ const pt: Dic = {
     tuNumeroWa: 'Seu número de WhatsApp', phoneId: 'Phone Number ID', tokenAcceso: 'Token de acesso', metaAviso: 'A Meta Cloud API exige conta verificada e modelos aprovados.',
     pagosIntro: 'Cobre com cartão nos seus orçamentos. Conecte sua própria conta Stripe: o dinheiro vai direto para você.',
     llavePublica: 'Chave pública do Stripe', llaveSecreta: 'Chave secreta do Stripe', yaConfigurada: '••• já configurada',
-    oLinkPago: 'Ou use um link de pagamento', linkPagoAyuda: 'Se preferir não conectar chaves, cole um link de pagamento: aparecerá como botão nos seus orçamentos.', dondeLlaves: 'Onde encontro minhas chaves',
+    oLinkPago: 'Ou use um link de pagamento', linkPagoAyuda: 'Se preferir não conectar chaves, cole um link de pagamento: aparecerá como botão nos seus orçamentos.', probar: 'Testar conexão', probarCorreo: 'Enviar e-mail de teste', probando: 'Testando…', pruebaAyuda: 'Você pode testar antes de salvar: usamos o que você digitou.', pruebaCorreoOk: 'Pronto: enviamos um e-mail de teste para {{para}} com o design que seus clientes verão. Confira sua caixa (e o spam).', abrirWa: 'Abrir meu WhatsApp', dondeLlaves: 'Onde encontro minhas chaves',
     emailIntro: 'Envie orçamentos pelo seu próprio domínio em vez do e-mail da plataforma.',
     servidorSmtp: 'Servidor SMTP', puerto: 'Porta', usuario: 'Usuário', contrasena: 'Senha', fromEmail: 'De (e-mail)', fromNombre: 'De (nome)',
     guardar: 'Salvar',

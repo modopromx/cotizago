@@ -245,7 +245,7 @@ const en: Dic = {
     tuNumeroWa: 'Your WhatsApp number', phoneId: 'Phone Number ID', tokenAcceso: 'Access token', metaAviso: 'Meta Cloud API requires a verified account and approved templates.',
     pagosIntro: 'Charge cards on your quotes. Connect your own Stripe account: the money goes straight to you.',
     llavePublica: 'Stripe publishable key', llaveSecreta: 'Stripe secret key', yaConfigurada: '••• already set',
-    oLinkPago: 'Or use a payment link', linkPagoAyuda: 'If you’d rather not connect keys, paste a payment link: it will appear as a button on your quotes.', dondeLlaves: 'Where do I find my keys',
+    oLinkPago: 'Or use a payment link', linkPagoAyuda: 'If you’d rather not connect keys, paste a payment link: it will appear as a button on your quotes.', probar: 'Test connection', probarCorreo: 'Send test email', probando: 'Testing…', pruebaAyuda: 'You can test before saving: we use what you typed.', pruebaCorreoOk: 'Done: we sent a test email to {{para}} with the design your clients will see. Check your inbox (and spam).', abrirWa: 'Open my WhatsApp', dondeLlaves: 'Where do I find my keys',
     emailIntro: 'Send quotes from your own domain instead of the platform email.',
     servidorSmtp: 'SMTP server', puerto: 'Port', usuario: 'Username', contrasena: 'Password', fromEmail: 'From (email)', fromNombre: 'From (name)',
     guardar: 'Save',

@@ -255,7 +255,7 @@ const es = {
     tuNumeroWa: 'Tu número de WhatsApp', phoneId: 'Phone Number ID', tokenAcceso: 'Token de acceso', metaAviso: 'Meta Cloud API requiere cuenta verificada y plantillas aprobadas.',
     pagosIntro: 'Cobra con tarjeta en tus cotizaciones. Conecta tu propia cuenta de Stripe: el dinero llega directo a ti.',
     llavePublica: 'Llave pública de Stripe', llaveSecreta: 'Llave secreta de Stripe', yaConfigurada: '••• ya configurada',
-    oLinkPago: 'O usa un link de pago', linkPagoAyuda: 'Si prefieres no conectar llaves, pega un link de pago: aparecerá como botón en tus cotizaciones.', dondeLlaves: 'Dónde encuentro mis llaves',
+    oLinkPago: 'O usa un link de pago', linkPagoAyuda: 'Si prefieres no conectar llaves, pega un link de pago: aparecerá como botón en tus cotizaciones.', probar: 'Probar conexión', probarCorreo: 'Enviar correo de prueba', probando: 'Probando…', pruebaAyuda: 'Puedes probar antes de guardar: usamos lo que escribiste.', pruebaCorreoOk: 'Listo: te mandamos un correo de prueba a {{para}} con el diseño que verán tus clientes. Revisa tu bandeja (y spam).', abrirWa: 'Abrir mi WhatsApp', dondeLlaves: 'Dónde encuentro mis llaves',
     emailIntro: 'Envía las cotizaciones desde tu propio dominio en lugar del correo de la plataforma.',
     servidorSmtp: 'Servidor SMTP', puerto: 'Puerto', usuario: 'Usuario', contrasena: 'Contraseña', fromEmail: 'From (correo)', fromNombre: 'From (nombre)',
     guardar: 'Guardar',

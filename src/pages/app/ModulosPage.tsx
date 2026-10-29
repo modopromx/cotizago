@@ -10,7 +10,9 @@ import type { Stripe } from '@stripe/stripe-js'
 import CampoTelefono from '../../components/CampoTelefono'
 import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
-import { MessageCircle, Mail, CreditCard, Code2, Blocks, Settings, Save, X, ExternalLink, AlertTriangle } from 'lucide-react'
+import { MessageCircle, Mail, CreditCard, Code2, Blocks, Settings, Save, X, ExternalLink, AlertTriangle, CheckCircle2, XCircle, PlugZap } from 'lucide-react'
+
+type Prueba = { pasos: { ok: boolean; texto: string }[]; enlace?: string }
 
 const ICONOS: Record<string, any> = {
   whatsapp_propio: MessageCircle, email_profesional: Mail, pagos_linea: CreditCard, api_webhooks: Code2,
@@ -31,6 +33,8 @@ export default function ModulosPage() {
   const [config, setConfig] = useState<{ tipo: string; clave: string } | null>(null)
   const [form, setForm] = useState<any>({})
   const [saving, setSaving] = useState(false)
+  const [probando, setProbando] = useState(false)
+  const [prueba, setPrueba] = useState<Prueba | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
   const [stripeCfg, setStripeCfg] = useState<{ pk: string; habilitado: boolean }>({ pk: '', habilitado: false })
@@ -141,7 +145,27 @@ export default function ModulosPage() {
     const tipo = TIPO_CONFIG[clave]
     const actual = integr[tipo]
     setForm({ ...(actual?.config ?? {}), secreto: '' })
+    setPrueba(null)
     setConfig({ tipo, clave })
+  }
+
+  // Prueba con lo que está escrito en el formulario (aunque no se haya guardado).
+  // Sin contraseña/llave nueva, el servidor usa la ya guardada.
+  const probar = async () => {
+    if (!config) return
+    setProbando(true); setPrueba(null)
+    const { secreto, ...cfg } = form
+    try {
+      if (config.tipo === 'email') {
+        const d = await llamar('enviar-email', { clave: 'prueba_correo', config: cfg, secreto: secreto || null })
+        setPrueba({ pasos: [d.ok ? { ok: true, texto: t('mod.pruebaCorreoOk', { para: d.para }) } : { ok: false, texto: d.error }] })
+      } else {
+        const d = await llamar('probar-integracion', { tipo: config.tipo, config: cfg, secreto: secreto || null })
+        setPrueba({ pasos: d.pasos ?? [], enlace: d.enlace })
+      }
+    } catch (e: any) {
+      setPrueba({ pasos: [{ ok: false, texto: e.message }] })
+    } finally { setProbando(false) }
   }
 
   const guardarConfig = async () => {
@@ -307,6 +331,29 @@ export default function ModulosPage() {
                   </div>
                 </>
               )}
+
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <button onClick={probar} disabled={probando || saving} className="btn-secondary w-full justify-center">
+                  {probando
+                    ? <span role="status" aria-label={t('mod.probando')} className="w-4 h-4 border-2 border-navy-900 border-t-transparent rounded-full animate-spin" />
+                    : <PlugZap className="w-4 h-4" aria-hidden="true" />}
+                  {probando ? t('mod.probando') : config.tipo === 'email' ? t('mod.probarCorreo') : t('mod.probar')}
+                </button>
+                {!prueba && <p className="text-[11px] text-slate-500 text-center">{t('mod.pruebaAyuda')}</p>}
+                {prueba && (
+                  <ul aria-live="polite" className="space-y-1.5 rounded-lg bg-fondo p-3">
+                    {prueba.pasos.map((p, i) => (
+                      <li key={i} className={`flex items-start gap-2 text-xs ${p.ok ? 'text-success-700' : 'text-red-700'}`}>
+                        {p.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" /> : <XCircle className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                        <span>{p.texto}</span>
+                      </li>
+                    ))}
+                    {prueba.enlace && (
+                      <li><a href={prueba.enlace} target="_blank" rel="noreferrer" className="text-xs text-primary-700 inline-flex items-center gap-1 hover:underline">{t('mod.abrirWa')} <ExternalLink className="w-3 h-3" aria-hidden="true" /></a></li>
+                    )}
+                  </ul>
+                )}
+              </div>
 
               <div className="flex gap-3 pt-1">
                 <button onClick={() => setConfig(null)} className="btn-secondary flex-1 justify-center">{t('mod.cancelar')}</button>

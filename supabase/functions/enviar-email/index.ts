@@ -91,6 +91,21 @@ ${pie ? `<tr><td style="padding:16px 32px 26px;text-align:center;color:#94a3b8;f
 </table></td></tr></table></div>`
 }
 
+/** El error del servidor de correo, en palabras que el usuario entiende. */
+function explicarSmtp(e) {
+  const s = `${e?.code ?? ''} ${e?.responseCode ?? ''} ${e?.message ?? e}`
+  if (/EAUTH|\b535\b|authentication|invalid login|credentials/i.test(s)) return 'El servidor rechazó el usuario o la contraseña. Usa los de tu buzón de correo (el usuario suele ser el correo completo).'
+  if (/ENOTFOUND|EAI_AGAIN|getaddrinfo|name or service|dns/i.test(s)) return 'No existe ese servidor. Revisa cómo está escrito (en Hostinger es smtp.hostinger.com).'
+  if (/ECONNREFUSED|refused/i.test(s)) return 'El servidor no aceptó la conexión. Revisa el servidor y el puerto (465 o 587; en Hostinger: smtp.hostinger.com y 465).'
+  if (/ETIMEDOUT|timeout|ESOCKET|ECONNRESET/i.test(s)) return 'El servidor no respondió. Revisa el servidor y el puerto (465 o 587).'
+  if (/certificate|ssl|tls|wrong version/i.test(s)) return 'Falló la conexión segura. Prueba con el puerto 465 o con el 587.'
+  if (/\b55[0-4]\b|sender|not owned|relay/i.test(s)) return 'El servidor no deja enviar desde ese remitente. El «correo remitente» debe ser el mismo buzón con el que entras.'
+  return 'No se pudo enviar el correo.'
+}
+
+/** Host de correo aceptable (no direcciones internas). */
+const hostValido = (h) => /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(h) && !/^(localhost|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(h)
+
 async function getSecret(admin, clave) {
   const { data } = await admin.from('plataforma_secretos').select('valor').eq('clave', clave).maybeSingle()
   return (data && data.valor) || ''
@@ -118,6 +133,61 @@ Deno.serve(async (req) => {
     let vars = {}
     let wsCot = ''
     let empCot = null
+
+    // ---- Correo de PRUEBA del módulo Email profesional ----
+    // Usa los datos del formulario (aunque no se hayan guardado); si la contraseña
+    // viene vacía, la ya guardada. Solo se envía al correo del propio usuario.
+    if (clave === 'prueba_correo') {
+      if (!wsId) return json({ error: 'Sin cuenta' }, 400)
+      const { data: activo } = await admin.rpc('modulo_activo', { p_workspace: wsId, p_clave: 'email_profesional' })
+      if (!activo) return json({ error: 'Activa el módulo Email profesional para probarlo.' }, 403)
+      const { count } = await admin.from('email_envios').select('*', { count: 'exact', head: true })
+        .eq('workspace_id', wsId).like('asunto', 'Prueba:%').gte('created_at', new Date(Date.now() - 3600_000).toISOString())
+      if ((count ?? 0) >= 10) return json({ error: 'Ya hiciste varias pruebas seguidas. Espera unos minutos.' }, 429)
+      const cfgP = body.config ?? {}
+      const host = String(cfgP.host ?? '').trim().toLowerCase()
+      const puerto = Number(cfgP.puerto || 587)
+      const remitente = String(cfgP.from_email ?? '').trim()
+      if (!hostValido(host)) return json({ ok: false, error: 'Escribe el servidor de correo (por ejemplo smtp.hostinger.com).' })
+      if (![25, 465, 587, 2525].includes(puerto)) return json({ ok: false, error: 'El puerto debe ser 465 o 587.' })
+      if (!emailValido(remitente)) return json({ ok: false, error: 'Escribe el correo remitente.' })
+      let clavePass = String(body.secreto ?? '')
+      if (!clavePass) {
+        const { data: integ } = await admin.from('integraciones').select('secreto').eq('workspace_id', wsId).eq('tipo', 'email').maybeSingle()
+        clavePass = integ?.secreto ?? ''
+      }
+      if (!clavePass) return json({ ok: false, error: 'Escribe la contraseña del correo.' })
+      const para = user.email ?? ''
+      const { data: emp } = await admin.from('empresas').select('*').eq('workspace_id', wsId).maybeSingle()
+      const { data: ultima } = await admin.from('cotizaciones').select('token').eq('workspace_id', wsId).eq('folio_consumido', true).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      const { data: tp } = await admin.from('plantillas_mensajes').select('asunto, cuerpo').eq('workspace_id', wsId).eq('canal', 'email').eq('momento', 'envio_inicial').maybeSingle()
+      const { data: tplSis } = await admin.from('email_templates').select('cuerpo').eq('clave', 'cotizacion_enviada').maybeSingle()
+      const v = {
+        plataforma: 'Cotiza Go', cliente: 'Cliente de prueba',
+        empresa: corto(emp?.nombre_comercial || emp?.razon_social || '', 80), folio: 'COT-PRUEBA',
+        fecha: fecha(new Date().toISOString()), total: dinero(1160, 'MXN'), vigencia: 'Sin vencimiento',
+        enlace_publico: ultima?.token ? `${SITIO}/c/${encodeURIComponent(ultima.token)}` : SITIO,
+        empresa_telefono: corto(emp?.telefono, 30), empresa_email: emailValido(emp?.email) ? emp.email : '',
+        vendedor: corto(prof?.nombre || '', 80),
+      }
+      const texto = render(tp?.cuerpo?.trim() ? tp.cuerpo : (tplSis?.cuerpo ?? 'Hola {{cliente}},\n\nTe compartimos la cotización {{folio}} por {{total}}.\n\n{{enlace_publico}}'), v, false)
+      const asunto = 'Prueba: ' + corto(render(tp?.asunto || 'Cotización {{folio}} de {{empresa}}', v, false), 180)
+      let ok = false, detalle = '', error = ''
+      try {
+        const t = nodemailer.createTransport({
+          host, port: puerto, secure: puerto === 465,
+          auth: { user: String(cfgP.usuario || remitente), pass: clavePass },
+          connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000,
+        })
+        const nombre = corto(cfgP.from_nombre || v.empresa || '', 80)
+        await t.sendMail({ from: nombre ? `${nombre} <${remitente}>` : remitente, to: para, subject: asunto, text: texto, html: htmlMarca(texto, v, emp) })
+        t.close()
+        ok = true
+      } catch (e) { error = explicarSmtp(e); detalle = String(e?.message ?? e).slice(0, 200) }
+      await admin.from('email_envios').insert({ workspace_id: wsId, destinatario: para, asunto, estado: ok ? 'enviado' : 'fallido' })
+      return ok ? json({ ok: true, para }) : json({ ok: false, error, detalle })
+    }
+
     if (PROPIOS.includes(clave)) {
       para = user.email ?? ''
       const saldo = Number(prof?.folios_balance ?? 0)
@@ -226,7 +296,7 @@ Deno.serve(async (req) => {
       html = tpl.cuerpo_html ? render(tpl.cuerpo_html, vars, true) : `<pre style="font-family:sans-serif">${esc(texto)}</pre>`
     }
 
-    let ok = false, detalle = ''
+    let ok = false, detalle = '', motivo = ''
     try {
       const srv = propio
         ? { hostname: propio.host, port: propio.port, user: propio.usuario, pass: propio.pass, from: propio.nombre ? `${propio.nombre} <${propio.from}>` : propio.from, reply: propio.from }
@@ -250,6 +320,7 @@ Deno.serve(async (req) => {
       ok = true
     } catch (e) {
       detalle = String(e).slice(0, 300)
+      if (propio) motivo = explicarSmtp(e)
     }
 
     await admin.from('email_envios').insert({
@@ -257,7 +328,7 @@ Deno.serve(async (req) => {
       estado: ok ? 'enviado' : 'fallido',
     })
 
-    if (!ok) return json({ error: propio ? 'No se pudo enviar con tu correo. Revisa los datos en Módulos › Email profesional.' : 'No se pudo enviar el correo por SMTP', detalle }, 502)
+    if (!ok) return json({ error: propio ? `No se pudo enviar con tu correo. ${motivo} Revisa Módulos › Email profesional y usa «Enviar correo de prueba».` : 'No se pudo enviar el correo por SMTP', detalle }, 502)
     return json({ ok: true })
   } catch (e) {
     return json({ error: String(e) }, 500)
