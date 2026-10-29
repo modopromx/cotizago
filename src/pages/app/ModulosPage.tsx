@@ -148,9 +148,9 @@ export default function ModulosPage() {
     if (!wsId || !config) return
     setSaving(true)
     const { secreto, ...cfg } = form
-    const payload: any = { workspace_id: wsId, tipo: config.tipo, config: cfg, activa: true, updated_at: new Date().toISOString() }
-    if (secreto) payload.secreto = secreto           // solo se sobrescribe si escribió algo
-    const { error } = await supabase.from('integraciones').upsert(payload, { onConflict: 'workspace_id,tipo' })
+    // Se guarda con la función del servidor: la llave se escribe pero el
+    // navegador nunca puede volver a leerla. Vacía = se conserva la anterior.
+    const { error } = await supabase.rpc('guardar_integracion', { p_tipo: config.tipo, p_config: cfg, p_secreto: secreto || null })
     if (error) toast.error(t('mod.errorGuardar') + error.message)
     else { toast.success(t('mod.configGuardada')); setConfig(null); load() }
     setSaving(false)
