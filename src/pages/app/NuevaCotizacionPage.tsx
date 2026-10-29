@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
+import { enApp } from '../../lib/enApp'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency } from '../../lib/utils'
 import ModalEnviarCotizacion from '../../components/ModalEnviarCotizacion'
@@ -183,7 +184,7 @@ export default function NuevaCotizacionPage() {
             <p className="text-sm font-medium text-navy-900">{t('qe.sinFoliosTitle')}</p>
             <p className="text-xs text-slate-500">{t('qe.sinFoliosSub')}</p>
           </div>
-          <button onClick={() => navigate('/app/folios')} className="btn-navy text-xs py-1.5 px-3 shrink-0">{t('qe.recargar')}</button>
+          {!enApp() && <button onClick={() => navigate('/app/folios')} className="btn-navy text-xs py-1.5 px-3 shrink-0">{t('qe.recargar')}</button>}
         </div>
       )}
 

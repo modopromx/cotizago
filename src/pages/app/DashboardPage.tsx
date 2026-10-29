@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { enApp } from '../../lib/enApp'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import {
   CheckCircle2, Clock, XCircle, DollarSign, Plus, FileText,
@@ -299,7 +300,7 @@ export default function DashboardPage() {
                   </div>
                   {activo ? (
                     <span className="badge bg-success-50 text-success-700 shrink-0">{t('dash.activo')}</span>
-                  ) : (
+                  ) : enApp() ? null : (
                     <button type="button" onClick={() => navigate('/app/modulos')} aria-label={`${t('dash.activar')} ${m.nombre}`} className="min-h-[36px] text-xs font-medium text-primary-700 hover:underline inline-flex items-center gap-0.5 shrink-0">
                       {t('dash.activar')} <ArrowRight className="w-3 h-3" aria-hidden="true" />
                     </button>

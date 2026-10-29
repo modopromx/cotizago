@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { enApp } from '../../lib/enApp'
 import { useAuth } from '../../context/AuthContext'
 import { formatDatetime } from '../../lib/utils'
 import toast from 'react-hot-toast'
@@ -138,9 +139,11 @@ export default function ApiKeysPage() {
                 Mejora tu plan para generar llaves y crear cotizaciones automáticamente desde tus apps o integraciones.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={() => navigate('/app/folios')} className="btn-primary text-xs">
-                  Mejorar mi plan <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                </button>
+                {!enApp() && (
+                  <button onClick={() => navigate('/app/folios')} className="btn-primary text-xs">
+                    Mejorar mi plan <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                )}
                 <Link to="/api" className="btn-secondary text-xs">Ver qué incluye la API</Link>
               </div>
             </div>

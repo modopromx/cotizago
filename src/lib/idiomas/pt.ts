@@ -205,6 +205,7 @@ const pt: Dic = {
     cancelar: 'Cancelar', guardar: 'Salvar', crear: 'Criar item',
     actualizado: 'Produto atualizado', creado: 'Produto criado', confEliminar: 'Excluir produto?', eliminado: 'Produto excluído',
   },
+  app: { misFolios: 'Meus fólios', noDisponible: 'A compra de fólios e módulos não está disponível no app.' },
   fol: {
     pagoOxxo: 'Seu boleto OXXO está pronto. Seus créditos são adicionados automaticamente quando você pagar na loja (até 1 dia útil).', pagoRecibido: 'Pagamento recebido! Creditando seus créditos...', pagoCancelado: 'Pagamento cancelado.',
     pagosNoActivos: 'Pagamentos online ainda não ativados. Fale conosco para receber seu link de pagamento.',

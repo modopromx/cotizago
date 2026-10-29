@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
+import { enApp } from '../../lib/enApp'
 import { useAuth } from '../../context/AuthContext'
 import { usePaquetes, precioDe, fmtPrecio, SIMBOLO_MONEDA } from '../../lib/usePaquetes'
 import { cargarConfigStripe, instanciaStripe } from '../../lib/stripe'
@@ -79,13 +80,27 @@ export default function FoliosPage() {
   const abiertoDesdePortada = useRef(false)
   useEffect(() => {
     const elegido = (params.get('paquete') ?? '').toLowerCase()
-    if (!elegido || abiertoDesdePortada.current || !paquetes.length || !stripeCfg.pk || !user) return
+    if (enApp() || !elegido || abiertoDesdePortada.current || !paquetes.length || !stripeCfg.pk || !user) return
     const p = paquetes.find((x: any) => String(x.nombre ?? '').toLowerCase() === elegido || x.id === elegido)
     if (!p) return
     abiertoDesdePortada.current = true
     handleCompra(p)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params, paquetes, stripeCfg.pk, user])
+
+  // App de Android: solo el saldo, sin paquetes ni pagos (política de Google
+  // Play: lo digital no se vende fuera de su cobro, ni con enlace a la web).
+  if (enApp()) return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-navy-900">{t('app.misFolios')}</h1>
+      <div className="rounded-2xl p-6 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #06213B, #08AEB6)' }}>
+        <div className="flex items-center gap-2 text-white/80 text-xs font-semibold uppercase tracking-wider"><Coins className="w-4 h-4" aria-hidden="true" /> {t('fol.saldoActual')}</div>
+        <p className="text-5xl font-black mt-2">{profile?.folios_balance ?? 0} <span className="text-2xl font-semibold text-white/70">{t('fol.folios')}</span></p>
+        <p className="text-white/80 text-sm mt-1">{t('fol.folioNoCaduca')}</p>
+      </div>
+      <div className="card p-5 text-sm text-slate-600">{t('app.noDisponible')}</div>
+    </div>
+  )
 
   return (
     <div className="space-y-6">

@@ -4,6 +4,10 @@ import * as Sentry from '@sentry/react'
 import App from './App'
 import './lib/i18n'
 import './index.css'
+import { detectarApp } from './lib/enApp'
+
+// Antes de pintar nada: ¿viene de la app de Android? (ahí no se vende nada).
+detectarApp()
 
 // Monitoreo de errores en producción (Sentry). Solo se activa en el sitio
 // publicado, no en desarrollo, para no ensuciar el panel con pruebas locales.

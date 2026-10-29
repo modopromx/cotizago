@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
+import { enApp } from '../../lib/enApp'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { cargarConfigStripe, instanciaStripe } from '../../lib/stripe'
@@ -242,6 +243,9 @@ export default function ModulosPage() {
                     <button onClick={() => cancelar(m)} disabled={cargando} className="btn-secondary flex-1 justify-center text-xs text-red-700">{t('mod.cancelar')}</button>
                   )}
                 </div>
+              ) : enApp() ? (
+                // App de Android: no se contrata nada aquí (política de Google Play).
+                <p className="mt-4 text-[11px] text-slate-500 text-center">{t('app.noDisponible')}</p>
               ) : (
                 <button onClick={() => contratar(m)} disabled={cargando} className="btn-navy mt-4 w-full justify-center text-xs">
                   {cargando ? <span role="status" aria-label="Cargando" className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}

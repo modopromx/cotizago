@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "mx.com.cotizago.app",
+      "sha256_cert_fingerprints": [
+        "02:B8:7F:DD:BF:2A:AA:FE:40:C6:BD:06:EC:8C:EF:C5:74:A3:D6:EE:25:2A:A9:30:1F:8E:4E:E0:2B:76:98:B3"
+      ]
+    }
+  }
+]

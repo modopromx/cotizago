@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { Building2, Coins, Receipt, Blocks, LogOut, ChevronDown, Plug } from 'lucide-react'
+import { enApp } from '../lib/enApp'
 
 export default function MenuUsuario() {
   const { t } = useTranslation()
@@ -37,9 +38,10 @@ export default function MenuUsuario() {
   const ir = (ruta: string) => { setOpen(false); navigate(ruta) }
   const salir = async () => { setOpen(false); await signOut(); navigate('/login') }
 
+  // En la app de Android no se ofrece comprar folios (política de Google Play).
   const accesos = [
     { icon: Building2, label: t('shell.miEmpresa'), sub: t('menu.miEmpresaSub'), ruta: '/app/configuracion' },
-    { icon: Coins, label: t('shell.comprarFolios'), sub: t('menu.foliosSub', { n: folios }), ruta: '/app/folios' },
+    ...(enApp() ? [] : [{ icon: Coins, label: t('shell.comprarFolios'), sub: t('menu.foliosSub', { n: folios }), ruta: '/app/folios' }]),
     { icon: Receipt, label: t('shell.notasFacturas'), sub: t('menu.facturasSub'), ruta: '/app/facturas' },
     { icon: Plug, label: t('shell.api'), sub: t('menu.apiSub'), ruta: '/app/api' },
     { icon: Blocks, label: t('shell.modulos'), sub: t('menu.modulosSub'), ruta: '/app/modulos' },

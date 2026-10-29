@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
+import { enApp } from '../../lib/enApp'
 import { useAuth } from '../../context/AuthContext'
 import { formatCurrency, formatDate } from '../../lib/utils'
 import { descargarNotaRemision } from '../../lib/cotizacionPdf'
@@ -142,7 +143,7 @@ export default function FacturasPage() {
         <div className="card p-10 text-center">
           <FileText className="w-9 h-9 text-slate-300 mx-auto mb-2" aria-hidden="true" />
           <p className="text-slate-500 text-sm">{t('fol.sinRecargas')}</p>
-          <Link to="/app/folios" className="text-xs text-primary-700 mt-1 inline-block hover:underline">{t('fol.compraMas')}</Link>
+          {!enApp() && <Link to="/app/folios" className="text-xs text-primary-700 mt-1 inline-block hover:underline">{t('fol.compraMas')}</Link>}
         </div>
       ) : (
         <div className="card overflow-hidden">

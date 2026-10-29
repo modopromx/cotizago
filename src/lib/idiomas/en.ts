@@ -205,6 +205,7 @@ const en: Dic = {
     cancelar: 'Cancel', guardar: 'Save', crear: 'Create item',
     actualizado: 'Product updated', creado: 'Product created', confEliminar: 'Delete product?', eliminado: 'Product deleted',
   },
+  app: { misFolios: 'My folios', noDisponible: 'Buying folios and modules is not available in the app.' },
   fol: {
     pagoOxxo: 'Your OXXO voucher is ready. Your credits are added automatically once you pay at the store (up to 1 business day).', pagoRecibido: 'Payment received! Crediting your credits...', pagoCancelado: 'Payment cancelled.',
     pagosNoActivos: 'Online payments not active yet. Message us for your payment link.',

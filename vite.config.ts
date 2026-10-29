@@ -56,7 +56,7 @@ export default defineConfig({
         // Nunca cachear la API de Supabase ni el portal público de facturación:
         // /facturar debe cargar SIEMPRE en vivo (va embebido en el sitio de cada
         // negocio y los clientes deben ver la última versión al instante, sin caché).
-        navigateFallbackDenylist: [/^\/api/, /supabase\.co/, /^\/facturar/],
+        navigateFallbackDenylist: [/^\/api/, /supabase\.co/, /^\/facturar/, /^\/\.well-known/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,

@@ -205,6 +205,7 @@ const fr: Dic = {
     cancelar: 'Annuler', guardar: 'Enregistrer', crear: 'Créer l’élément',
     actualizado: 'Produit mis à jour', creado: 'Produit créé', confEliminar: 'Supprimer le produit ?', eliminado: 'Produit supprimé',
   },
+  app: { misFolios: 'Mes folios', noDisponible: 'L’achat de folios et de modules n’est pas disponible dans l’application.' },
   fol: {
     pagoOxxo: 'Votre bon OXXO est prêt. Vos crédits sont ajoutés automatiquement après le paiement en magasin (jusqu’à 1 jour ouvré).', pagoRecibido: 'Paiement reçu ! Créditation de vos crédits...', pagoCancelado: 'Paiement annulé.',
     pagosNoActivos: 'Paiements en ligne pas encore activés. Écrivez-nous pour votre lien de paiement.',

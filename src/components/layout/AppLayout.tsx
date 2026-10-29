@@ -12,6 +12,7 @@ import {
   Mail, Building2, LogOut, Menu, X, Plus, LifeBuoy, Plug, BookOpen, Gift,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { enApp } from '../../lib/enApp'
 
 // Menú del panel según el diseño de referencia. labelKey → i18n (shell.*)
 const navItems = [
@@ -100,7 +101,7 @@ export default function AppLayout() {
 
       {/* Navegación */}
       <nav aria-label={t('shell.panel')} className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
-        {navItems.map(item => (
+        {navItems.filter(i => !(enApp() && i.to === '/app/folios')).map(item => (
           <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setOpen(false)} className={linkClasses}>
             <item.icon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
             {t(item.labelKey)}

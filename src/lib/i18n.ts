@@ -215,6 +215,7 @@ const es = {
     cancelar: 'Cancelar', guardar: 'Guardar', crear: 'Crear concepto',
     actualizado: 'Producto actualizado', creado: 'Producto creado', confEliminar: '¿Eliminar producto?', eliminado: 'Producto eliminado',
   },
+  app: { misFolios: 'Mis folios', noDisponible: 'La compra de folios y módulos no está disponible en la app.' },
   fol: {
     pagoOxxo: 'Tu ficha OXXO está lista. Tus folios se acreditan solos cuando pagues en tienda (puede tardar hasta 1 día hábil).', pagoRecibido: '¡Pago recibido! Acreditando tus folios...', pagoCancelado: 'Pago cancelado.',
     pagosNoActivos: 'Pagos en línea aún no activados. Escríbenos para tu link de pago.',

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
+import { enApp } from './lib/enApp'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import AvisoActualizacion from './components/AvisoActualizacion'
@@ -110,7 +111,8 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Landing */}
-      <Route path="/" element={<LandingPage />} />
+      {/* En la app de Android la portada (con precios) no se muestra: va directo al panel. */}
+      <Route path="/" element={enApp() ? <Navigate to="/app" replace /> : <LandingPage />} />
 
       {/* Público - cotización */}
       <Route path="/c/:token" element={<CotizacionPublicaPage />} />
