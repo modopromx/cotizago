@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import toast from 'react-hot-toast'
+import { registrarAvisos, olvidarDispositivo } from '../lib/nativo'
 
 interface Profile {
   id: string
@@ -66,8 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    await olvidarDispositivo()
     await supabase.auth.signOut()
   }
+
+  // App de iPhone: con sesión iniciada, pedir permiso de avisos y guardar el token.
+  useEffect(() => {
+    if (user) registrarAvisos(user.id)
+  }, [user])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

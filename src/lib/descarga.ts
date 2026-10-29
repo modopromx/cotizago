@@ -8,6 +8,7 @@
 import { createElement } from 'react'
 import toast from 'react-hot-toast'
 import type { jsPDF } from 'jspdf'
+import { esNativo, compartirArchivo } from './nativo'
 
 function guardar(url: string, nombre: string) {
   const a = document.createElement('a')
@@ -22,6 +23,11 @@ function guardar(url: string, nombre: string) {
 
 /** true = ya se descargó; false = se mostró el botón «Descargar». */
 export function descargarBlob(blob: Blob, nombre: string): boolean {
+  // App de iPhone: el WebView no descarga; se abre «Compartir» de iOS.
+  if (esNativo()) {
+    compartirArchivo(blob, nombre).catch(() => toast.error('No se pudo compartir el PDF'))
+    return true
+  }
   const url = URL.createObjectURL(blob)
   setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000)
 

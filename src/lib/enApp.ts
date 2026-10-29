@@ -12,7 +12,9 @@ const MARCA = 'cg_app'
 export function detectarApp() {
   try {
     const desde = new URLSearchParams(window.location.search).get('desde')
-    if (desde === 'app' || document.referrer.startsWith('android-app://mx.com.cotizago.app')) {
+    // App de iPhone (Capacitor): mismas reglas de Apple, también sin compras.
+    const iphone = !!(window as any).Capacitor?.isNativePlatform?.()
+    if (desde === 'app' || iphone || document.referrer.startsWith('android-app://mx.com.cotizago.app')) {
       sessionStorage.setItem(MARCA, '1')
     }
   } catch { /* sin almacenamiento: se comporta como la web */ }

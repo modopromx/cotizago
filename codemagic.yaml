@@ -1,0 +1,47 @@
+# App de iPhone de Cotiza Go: se compila en Codemagic (no hay Mac).
+# (29-oct-2026) Al correr el flujo, Codemagic instala, sincroniza Capacitor,
+# firma con la llave de App Store Connect y sube la app a TestFlight. Desde
+# TestFlight se manda a revisión en App Store Connect.
+#
+# Lo que se configura UNA vez en Codemagic (no va en el repositorio):
+# - Integración de App Store Connect llamada «CotizaGo ASC» (llave API .p8).
+# - Certificado de distribución y perfil del bundle mx.com.cotizago.app
+#   (Team settings → Code signing identities; se generan con la misma llave).
+workflows:
+  ios-app-store:
+    name: Cotiza Go — iPhone (TestFlight)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: CotizaGo ASC
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: mx.com.cotizago.app
+      vars:
+        XCODE_PROJECT: ios/App/App.xcodeproj
+        XCODE_SCHEME: App
+        BUNDLE_ID: mx.com.cotizago.app
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Instalar dependencias
+        script: npm ci
+      - name: Sincronizar Capacitor (iOS)
+        script: npx cap sync ios
+      - name: Usar perfiles de firma
+        script: xcode-project use-profiles
+      - name: Número de compilación (siguiente al último de TestFlight)
+        script: |
+          APP_ID=$(app-store-connect apps list --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --json | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['id'])")
+          ULTIMO=$(app-store-connect get-latest-testflight-build-number "$APP_ID" || echo 0)
+          cd ios/App && agvtool new-version -all $((ULTIMO + 1))
+      - name: Compilar .ipa
+        script: xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
