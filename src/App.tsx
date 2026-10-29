@@ -56,6 +56,7 @@ const AdminEmailTemplatesPage = lazy(() => import('./pages/admin/AdminEmailTempl
 const CotizacionPublicaPage = lazy(() => import('./pages/public/CotizacionPublicaPage'))
 const ContactoPage = lazy(() => import('./pages/public/ContactoPage'))
 const PrivacidadPage = lazy(() => import('./pages/public/PrivacidadPage'))
+const EliminarCuentaPage = lazy(() => import('./pages/public/EliminarCuentaPage'))
 const TerminosPage = lazy(() => import('./pages/public/TerminosPage'))
 const ApiDocsPage = lazy(() => import('./pages/public/ApiDocsPage'))
 const FacturarPage = lazy(() => import('./pages/public/FacturarPage'))
@@ -121,6 +122,7 @@ function AppRoutes() {
       <Route path="/contacto" element={<ContactoPage />} />
       <Route path="/privacidad" element={<PrivacidadPage />} />
       <Route path="/terminos" element={<TerminosPage />} />
+      <Route path="/eliminar-cuenta" element={<EliminarCuentaPage />} />
       <Route path="/api" element={<ApiDocsPage />} />
       <Route path="/ayuda" element={<DocumentacionPage />} />
       <Route path="/facturar" element={<FacturarPage />} />

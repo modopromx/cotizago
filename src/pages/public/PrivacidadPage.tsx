@@ -1,5 +1,6 @@
 // Página pública de aviso de privacidad de Cotiza Go (ModoPro).
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import NavPublica from '../../components/NavPublica'
 import { ShieldCheck } from 'lucide-react'
 
@@ -32,6 +33,13 @@ export default function PrivacidadPage() {
             </section>
           ))}
         </div>
+
+        <section className="mt-7">
+          <h2 className="text-lg font-bold text-navy-900">{t('priv.eliminarT')}</h2>
+          <p className="text-slate-600 mt-2 leading-relaxed">
+            {t('priv.eliminarD')} <Link to="/eliminar-cuenta" className="text-primary-700 underline">cotizago.com.mx/eliminar-cuenta</Link>
+          </p>
+        </section>
 
         <div className="mt-10 rounded-2xl bg-primary-50 border border-primary-100 px-5 py-4 text-sm text-primary-800">
           {t('priv.contacto')}

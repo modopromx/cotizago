@@ -90,7 +90,7 @@ const pt: Dic = {
     panel: 'Painel', cotizaGoControl: 'Cotiza Go · Central de controle', plan: 'Plano', folios: 'créditos', usuario: 'Usuário', notasFacturas: 'Notas e faturas', api: 'API / Integrações', docs: 'Documentação',
   },
   menu: {
-    miEmpresaSub: 'Dados e logotipo', foliosSub: '{{n}} disponíveis', facturasSub: 'Solicite ou baixe', modulosSub: 'Amplie sua conta', apiSub: 'Crie de outros apps', cerrarSesion: 'Sair',
+    eliminarCuenta: 'Excluir minha conta', eliminarSub: 'Apagar conta e dados', miEmpresaSub: 'Dados e logotipo', foliosSub: '{{n}} disponíveis', facturasSub: 'Solicite ou baixe', modulosSub: 'Amplie sua conta', apiSub: 'Crie de outros apps', cerrarSesion: 'Sair',
   },
   api: {
     title: 'API / Integrações', subtitle: 'Crie orçamentos de outros apps com sua chave API.',
@@ -111,7 +111,7 @@ const pt: Dic = {
     mockHi: 'Olá, Alan 👋', mockNueva: 'Nova cotação', mockCotizado: 'Cotado este mês', mockAceptacion: 'Aceitação', mockRecientes: 'Cotações recentes', mockEnviada: 'Enviada',
   },
   priv: {
-    volver: 'Voltar ao início', title: 'Aviso de privacidade', actualizado: 'Última atualização: julho de 2026',
+    eliminarT: 'Excluir sua conta', eliminarD: 'Você pode pedir a exclusão da sua conta e dos seus dados no menu do seu perfil ou em', volver: 'Voltar ao início', title: 'Aviso de privacidade', actualizado: 'Última atualização: julho de 2026',
     intro: 'Na Cotiza Go (ModoPro) valorizamos sua privacidade. Este aviso explica quais dados coletamos, como os usamos e quais direitos você tem sobre eles.',
     s1t: '1. Responsável', s1d: 'O responsável pelo tratamento dos seus dados pessoais é a Cotiza Go, operada pela ModoPro. Para qualquer assunto de privacidade, escreva para contacto@cotizago.com.mx.',
     s2t: '2. Dados que coletamos', s2d: 'Coletamos os dados que você fornece ao criar sua conta e usar o serviço: nome, empresa, telefone, e-mail, dados fiscais (para faturamento) e as informações das cotações e clientes que você registra. Também coletamos dados técnicos de uso (como registros de acesso) para operar e melhorar a plataforma.',

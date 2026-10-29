@@ -100,7 +100,7 @@ const es = {
     panel: 'Panel', cotizaGoControl: 'Cotiza Go · Control central', plan: 'Plan', folios: 'folios', usuario: 'Usuario', notasFacturas: 'Notas y facturas', api: 'API / Integraciones', docs: 'Documentación',
   },
   menu: {
-    miEmpresaSub: 'Datos y logotipo', foliosSub: '{{n}} disponibles', facturasSub: 'Solicita o descarga', modulosSub: 'Amplía tu cuenta', apiSub: 'Crea desde otras apps', cerrarSesion: 'Cerrar sesión',
+    eliminarCuenta: 'Eliminar mi cuenta', eliminarSub: 'Borrar cuenta y datos', miEmpresaSub: 'Datos y logotipo', foliosSub: '{{n}} disponibles', facturasSub: 'Solicita o descarga', modulosSub: 'Amplía tu cuenta', apiSub: 'Crea desde otras apps', cerrarSesion: 'Cerrar sesión',
   },
   api: {
     title: 'API / Integraciones', subtitle: 'Crea cotizaciones desde otras apps con tu llave API.',
@@ -121,7 +121,7 @@ const es = {
     mockHi: 'Hola, Alan 👋', mockNueva: 'Nueva cotización', mockCotizado: 'Cotizado este mes', mockAceptacion: 'Aceptación', mockRecientes: 'Cotizaciones recientes', mockEnviada: 'Enviada',
   },
   priv: {
-    volver: 'Volver al inicio', title: 'Aviso de privacidad', actualizado: 'Última actualización: julio 2026',
+    eliminarT: 'Eliminar tu cuenta', eliminarD: 'Puedes pedir que borremos tu cuenta y tus datos desde el menú de tu perfil o en', volver: 'Volver al inicio', title: 'Aviso de privacidad', actualizado: 'Última actualización: julio 2026',
     intro: 'En Cotiza Go (ModoPro) valoramos tu privacidad. Este aviso explica qué datos recabamos, cómo los usamos y qué derechos tienes sobre ellos.',
     s1t: '1. Responsable', s1d: 'El responsable del tratamiento de tus datos personales es Cotiza Go, operado por ModoPro. Para cualquier tema de privacidad puedes escribirnos a contacto@cotizago.com.mx.',
     s2t: '2. Datos que recabamos', s2d: 'Recabamos los datos que nos proporcionas al crear tu cuenta y usar el servicio: nombre, empresa, teléfono, correo electrónico, datos fiscales (para facturación) y la información de las cotizaciones y clientes que registras. También recabamos datos de uso técnico (por ejemplo, registros de acceso) para operar y mejorar la plataforma.',

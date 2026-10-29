@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
-import { Building2, Coins, Receipt, Blocks, LogOut, ChevronDown, Plug } from 'lucide-react'
+import { Building2, Coins, Receipt, Blocks, LogOut, ChevronDown, Plug, UserX } from 'lucide-react'
 import { enApp } from '../lib/enApp'
 
 export default function MenuUsuario() {
@@ -45,6 +45,8 @@ export default function MenuUsuario() {
     { icon: Receipt, label: t('shell.notasFacturas'), sub: t('menu.facturasSub'), ruta: '/app/facturas' },
     { icon: Plug, label: t('shell.api'), sub: t('menu.apiSub'), ruta: '/app/api' },
     { icon: Blocks, label: t('shell.modulos'), sub: t('menu.modulosSub'), ruta: '/app/modulos' },
+    // Requisito de Google Play: pedir el borrado de la cuenta desde el perfil.
+    { icon: UserX, label: t('menu.eliminarCuenta'), sub: t('menu.eliminarSub'), ruta: '/eliminar-cuenta' },
   ]
 
   return (

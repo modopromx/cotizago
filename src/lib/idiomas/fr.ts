@@ -90,7 +90,7 @@ const fr: Dic = {
     panel: 'Panneau', cotizaGoControl: 'Cotiza Go · Centre de contrôle', plan: 'Forfait', folios: 'crédits', usuario: 'Utilisateur', notasFacturas: 'Notes et factures', api: 'API / Intégrations', docs: 'Documentation',
   },
   menu: {
-    miEmpresaSub: 'Données et logo', foliosSub: '{{n}} disponibles', facturasSub: 'Demander ou télécharger', modulosSub: 'Étendez votre compte', apiSub: 'Créer depuis d\'autres apps', cerrarSesion: 'Déconnexion',
+    eliminarCuenta: 'Supprimer mon compte', eliminarSub: 'Effacer compte et données', miEmpresaSub: 'Données et logo', foliosSub: '{{n}} disponibles', facturasSub: 'Demander ou télécharger', modulosSub: 'Étendez votre compte', apiSub: 'Créer depuis d\'autres apps', cerrarSesion: 'Déconnexion',
   },
   api: {
     title: 'API / Intégrations', subtitle: 'Créez des devis depuis d\'autres apps avec votre clé API.',
@@ -111,7 +111,7 @@ const fr: Dic = {
     mockHi: 'Bonjour, Alan 👋', mockNueva: 'Nouveau devis', mockCotizado: 'Devisé ce mois-ci', mockAceptacion: 'Acceptation', mockRecientes: 'Devis récents', mockEnviada: 'Envoyé',
   },
   priv: {
-    volver: 'Retour à l\'accueil', title: 'Avis de confidentialité', actualizado: 'Dernière mise à jour : juillet 2026',
+    eliminarT: 'Supprimer votre compte', eliminarD: 'Vous pouvez demander la suppression de votre compte et de vos données depuis le menu de votre profil ou sur', volver: 'Retour à l\'accueil', title: 'Avis de confidentialité', actualizado: 'Dernière mise à jour : juillet 2026',
     intro: 'Chez Cotiza Go (ModoPro), nous respectons votre vie privée. Cet avis explique quelles données nous collectons, comment nous les utilisons et quels sont vos droits.',
     s1t: '1. Responsable', s1d: 'Le responsable du traitement de vos données personnelles est Cotiza Go, exploité par ModoPro. Pour toute question de confidentialité, écrivez à contacto@cotizago.com.mx.',
     s2t: '2. Données que nous collectons', s2d: 'Nous collectons les données que vous fournissez lors de la création de votre compte et de l\'utilisation du service : nom, entreprise, téléphone, e-mail, données fiscales (pour la facturation) et les informations des devis et clients que vous enregistrez. Nous collectons aussi des données techniques d\'usage (comme les journaux d\'accès) pour exploiter et améliorer la plateforme.',

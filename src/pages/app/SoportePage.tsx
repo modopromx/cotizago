@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
@@ -265,6 +266,10 @@ export default function SoportePage() {
             </form>
         </Modal>
       )}
+
+      <p className="text-xs text-slate-500 text-center">
+        <Link to="/eliminar-cuenta" className="hover:underline">{t('menu.eliminarCuenta')}</Link>
+      </p>
     </div>
   )
 }
