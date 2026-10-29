@@ -188,7 +188,7 @@ export default function ModulosPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-navy-900">{t('mod.title')}</h1>
-          <p className="text-slate-500 text-sm">{t('mod.subtitle')}</p>
+          {!enApp() && <p className="text-slate-500 text-sm">{t('mod.subtitle')}</p>}
         </div>
         <div className="text-right">
           <p className="text-xs text-slate-500">{t('mod.activosN', { n: activos.length })}</p>
@@ -218,8 +218,13 @@ export default function ModulosPage() {
               </div>
               <h3 className="mt-3 font-semibold text-navy-900">{m.nombre}</h3>
               <p className="mt-1 text-xs text-slate-500 flex-1">{m.descripcion}</p>
-              <p className="mt-3 text-lg font-extrabold text-navy-900">{formatCurrency(m.precio)}<span className="text-xs font-normal text-slate-500">{t('mod.mes')}</span></p>
-              <p className="text-[11px] text-slate-500">{t('mod.adicional')}</p>
+              {/* En la app de Android no se muestran precios: ahí no se vende nada. */}
+              {!enApp() && (
+                <>
+                  <p className="mt-3 text-lg font-extrabold text-navy-900">{formatCurrency(m.precio)}<span className="text-xs font-normal text-slate-500">{t('mod.mes')}</span></p>
+                  <p className="text-[11px] text-slate-500">{t('mod.adicional')}</p>
+                </>
+              )}
 
               {morosa && (
                 <p className="mt-2 text-[11px] text-red-700 flex items-start gap-1">
