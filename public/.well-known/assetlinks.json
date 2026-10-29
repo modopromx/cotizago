@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "mx.com.cotizago.app",
       "sha256_cert_fingerprints": [
-        "02:B8:7F:DD:BF:2A:AA:FE:40:C6:BD:06:EC:8C:EF:C5:74:A3:D6:EE:25:2A:A9:30:1F:8E:4E:E0:2B:76:98:B3"
+        "02:B8:7F:DD:BF:2A:AA:FE:40:C6:BD:06:EC:8C:EF:C5:74:A3:D6:EE:25:2A:A9:30:1F:8E:4E:E0:2B:76:98:B3",
+        "E1:28:5D:B6:B4:82:B0:6B:72:45:D8:15:92:32:DD:1C:30:0B:E9:82:6E:20:F3:84:05:9D:90:80:FC:C3:8A:D8"
       ]
     }
   }
