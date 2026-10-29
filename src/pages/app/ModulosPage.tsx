@@ -41,7 +41,7 @@ export default function ModulosPage() {
     const [{ data: mods }, subsRes, intRes] = await Promise.all([
       supabase.from('modulos').select('*').eq('activo', true).order('orden'),
       wsId ? supabase.from('modulo_suscripciones').select('*').eq('workspace_id', wsId) : Promise.resolve({ data: [] as any[] }),
-      wsId ? supabase.from('integraciones').select('*').eq('workspace_id', wsId) : Promise.resolve({ data: [] as any[] }),
+      wsId ? supabase.from('integraciones').select('id,workspace_id,tipo,config,activa,tiene_secreto').eq('workspace_id', wsId) : Promise.resolve({ data: [] as any[] }),
     ])
     setModulos(mods ?? [])
     const s: Record<string, any> = {}; (subsRes.data ?? []).forEach((x: any) => { s[x.clave] = x })
@@ -281,7 +281,7 @@ export default function ModulosPage() {
                   <div><label htmlFor="mod-llavePublica" className="label">{t('mod.llavePublica')}</label><input id="mod-llavePublica" className="input" placeholder="pk_live_..." value={form.publishable_key ?? ''} onChange={e => setForm({ ...form, publishable_key: e.target.value })} /></div>
                   <div>
                     <label htmlFor="mod-llaveSecreta" className="label">{t('mod.llaveSecreta')}</label>
-                    <input id="mod-llaveSecreta" type="password" className="input" placeholder={integr['pagos']?.secreto ? t('mod.yaConfigurada') : 'sk_live_...'} value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} />
+                    <input id="mod-llaveSecreta" type="password" className="input" placeholder={integr['pagos']?.tiene_secreto ? t('mod.yaConfigurada') : 'sk_live_...'} value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} />
                   </div>
                   <div className="pt-2 border-t border-slate-100">
                     <label htmlFor="mod-oLinkPago" className="label">{t('mod.oLinkPago')}</label>
@@ -300,7 +300,7 @@ export default function ModulosPage() {
                     <div><label htmlFor="mod-puerto" className="label">{t('mod.puerto')}</label><input id="mod-puerto" inputMode="numeric" className="input" value={form.puerto ?? '587'} onChange={e => setForm({ ...form, puerto: e.target.value })} /></div>
                     <div><label htmlFor="mod-usuario" className="label">{t('mod.usuario')}</label><input id="mod-usuario" className="input" value={form.usuario ?? ''} onChange={e => setForm({ ...form, usuario: e.target.value })} /></div>
                   </div>
-                  <div><label htmlFor="mod-contrasena" className="label">{t('mod.contrasena')}</label><input id="mod-contrasena" type="password" className="input" placeholder={integr['email']?.secreto ? t('mod.yaConfigurada') : '•••'} value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} /></div>
+                  <div><label htmlFor="mod-contrasena" className="label">{t('mod.contrasena')}</label><input id="mod-contrasena" type="password" className="input" placeholder={integr['email']?.tiene_secreto ? t('mod.yaConfigurada') : '•••'} value={form.secreto ?? ''} onChange={e => setForm({ ...form, secreto: e.target.value })} /></div>
                   <div className="grid grid-cols-2 gap-3">
                     <div><label htmlFor="mod-fromEmail" className="label">{t('mod.fromEmail')}</label><input id="mod-fromEmail" className="input" placeholder="ventas@tudominio.com" value={form.from_email ?? ''} onChange={e => setForm({ ...form, from_email: e.target.value })} /></div>
                     <div><label htmlFor="mod-fromNombre" className="label">{t('mod.fromNombre')}</label><input id="mod-fromNombre" className="input" value={form.from_nombre ?? ''} onChange={e => setForm({ ...form, from_nombre: e.target.value })} /></div>

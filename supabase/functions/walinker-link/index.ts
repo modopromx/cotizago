@@ -92,8 +92,9 @@ Deno.serve(async (req) => {
       return json({ url: waDirecto, whatsapp_url: waDirecto, fuente: 'wa.me', aviso: out?.error ?? 'Walinker no disponible' })
     }
 
-    if (cotizacion_id) {
-      await admin.from('cotizaciones').update({ wa_link: out.url }).eq('id', cotizacion_id)
+    // Solo en una cotizacion de SU cuenta: antes bastaba conocer el id de otra.
+    if (cotizacion_id && ws) {
+      await admin.from('cotizaciones').update({ wa_link: out.url }).eq('id', cotizacion_id).eq('workspace_id', ws)
     }
 
     return json({ url: out.url, whatsapp_url: out.whatsapp_url ?? waDirecto, slug: out.slug, fuente: 'walinker', reused: out.reused })

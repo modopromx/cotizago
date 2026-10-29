@@ -270,6 +270,7 @@ const pt: Dic = {
     momEnvioInicial: 'envio inicial', momAceptada: 'aceito', momRecordatorio: 'lembrete', whatsapp: 'WhatsApp',
   },
   cfg: {
+    linkPagoInvalido: 'O link de pagamento deve começar com https://', 
     cargando: 'Carregando...', title: 'Configuração da sua empresa', subtitle: 'Esses dados aparecerão automaticamente em todos os seus orçamentos.',
     tabEmpresa: 'Empresa / Marca', tabPago: 'Formas de pagamento',
     tipoEmisor: 'Tipo de emissor', empresaMarca: 'Empresa / Marca', personaFisica: 'Pessoa física',

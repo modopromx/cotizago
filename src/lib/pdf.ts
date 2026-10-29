@@ -14,7 +14,8 @@ const ANCHO = 210
 const CONTENIDO = ANCHO - MARGEN * 2
 
 function hexToRgb(hex?: string): [number, number, number] {
-  const h = (hex ?? '#08AEB6').replace('#', '')
+  // Un color mal escrito (p. ej. «rojo» o «#12») daba NaN y el PDF salía roto.
+  const h = /^#?[0-9a-f]{6}$/i.test(hex ?? '') ? String(hex).replace('#', '') : '08AEB6'
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
 }
 

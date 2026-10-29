@@ -92,6 +92,13 @@ export default function ConfiguracionPage() {
       }
     }
 
+    // Solo enlaces web (https://…): la base rechaza javascript:, data:, etc.
+    if (form.link_pago && !/^https?:\/\//i.test(String(form.link_pago).trim())) {
+      toast.error(t('cfg.linkPagoInvalido'))
+      setSaving(false)
+      return
+    }
+
     const { error } = await supabase.from('empresas').upsert(
       { ...form, workspace_id: wsId, updated_at: new Date().toISOString() },
       { onConflict: 'workspace_id' }

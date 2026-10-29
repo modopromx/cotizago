@@ -270,6 +270,7 @@ const en: Dic = {
     momEnvioInicial: 'initial send', momAceptada: 'accepted', momRecordatorio: 'reminder', whatsapp: 'WhatsApp',
   },
   cfg: {
+    linkPagoInvalido: 'The payment link must start with https://', 
     cargando: 'Loading...', title: 'Your company settings', subtitle: 'This information will appear automatically on all your quotes.',
     tabEmpresa: 'Company / Brand', tabPago: 'Payment methods',
     tipoEmisor: 'Issuer type', empresaMarca: 'Company / Brand', personaFisica: 'Individual',

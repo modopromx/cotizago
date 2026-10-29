@@ -280,6 +280,7 @@ const es = {
     momEnvioInicial: 'envío inicial', momAceptada: 'aceptada', momRecordatorio: 'recordatorio', whatsapp: 'WhatsApp',
   },
   cfg: {
+    linkPagoInvalido: 'El enlace de pago debe empezar con https://', 
     cargando: 'Cargando...', title: 'Configuración de tu empresa', subtitle: 'Estos datos aparecerán automáticamente en todas tus cotizaciones.',
     tabEmpresa: 'Empresa / Marca', tabPago: 'Formas de pago',
     tipoEmisor: 'Tipo de emisor', empresaMarca: 'Empresa / Marca', personaFisica: 'Persona física',

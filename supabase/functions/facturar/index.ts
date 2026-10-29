@@ -45,7 +45,10 @@ async function marcaDe(f: any) {
 }
 async function receptorDe(f: any) {
   if (!f.app_id || !f.cliente_email) return null
-  const { data } = await admin.from('facturacion_receptores').select('rfc,nombre,cp,regimen,uso_cfdi,email').eq('app_id', f.app_id).ilike('email', f.cliente_email).maybeSingle()
+  // ILIKE con los comodines escapados: un correo con % o _ ya no trae los datos
+  // fiscales de otra persona.
+  const correo = String(f.cliente_email).replace(/[\\%_]/g, (c) => '\\' + c)
+  const { data } = await admin.from('facturacion_receptores').select('rfc,nombre,cp,regimen,uso_cfdi,email').eq('app_id', f.app_id).ilike('email', correo).limit(1).maybeSingle()
   return data ?? null
 }
 // Conceptos de un pedido de Woo con las claves SAT del catálogo del negocio.
