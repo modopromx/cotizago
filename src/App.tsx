@@ -97,6 +97,13 @@ function RedirigirRecuperacion() {
   return null
 }
 
+/** Con sesión, /registro?plan=X lleva directo a pagar ese paquete (antes iba al
+ *  panel y el paquete elegido en la portada se perdía). */
+function RegistroConSesion() {
+  const plan = new URLSearchParams(window.location.search).get('plan')
+  return <Navigate to={plan ? `/app/folios?paquete=${encodeURIComponent(plan)}` : '/app'} replace />
+}
+
 function AppRoutes() {
   const { user, isAdminUser } = useAuth()
 
@@ -118,7 +125,7 @@ function AppRoutes() {
 
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to={isAdminUser ? '/admin' : '/app'} /> : <LoginPage />} />
-      <Route path="/registro" element={user ? <Navigate to="/app" /> : <RegisterPage />} />
+      <Route path="/registro" element={user ? <RegistroConSesion /> : <RegisterPage />} />
       <Route path="/recuperar" element={<RecuperarPage />} />
       {/* Sin redirección por sesión: el enlace del correo ABRE una sesión temporal. */}
       <Route path="/nueva-contrasena" element={<NuevaContrasenaPage />} />

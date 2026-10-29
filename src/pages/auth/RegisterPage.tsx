@@ -75,9 +75,11 @@ export default function RegisterPage() {
       }
     }
 
-    if (hasPlan && planPriceId) {
-      toast.success(t('auth.createdPlan'))
-      setTimeout(() => navigate(`/app?pago_pendiente=true&plan=${planPriceId}`), 1200)
+    // Viene de «Elegir» un paquete en la portada: al crear la cuenta va directo a
+    // pagarlo (antes caía en el panel y el paquete elegido se perdía).
+    if (planPriceId) {
+      toast.success(hasPlan ? t('auth.createdPlan') : t('auth.created'))
+      navigate(`/app/folios?paquete=${encodeURIComponent(planPriceId)}`)
     } else {
       toast.success(t('auth.created'))
       navigate('/app')

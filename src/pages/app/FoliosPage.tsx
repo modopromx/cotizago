@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
@@ -73,6 +73,19 @@ export default function FoliosPage() {
       toast.error(t('fol.errorConectarPagos'))
     } finally { setCheckout(null) }
   }
+
+  // ?paquete=<nombre> (viene de «Elegir» en la portada): abre ese pago una vez,
+  // en cuanto estén listos los paquetes y la configuración de Stripe.
+  const abiertoDesdePortada = useRef(false)
+  useEffect(() => {
+    const elegido = (params.get('paquete') ?? '').toLowerCase()
+    if (!elegido || abiertoDesdePortada.current || !paquetes.length || !stripeCfg.pk || !user) return
+    const p = paquetes.find((x: any) => String(x.nombre ?? '').toLowerCase() === elegido || x.id === elegido)
+    if (!p) return
+    abiertoDesdePortada.current = true
+    handleCompra(p)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, paquetes, stripeCfg.pk, user])
 
   return (
     <div className="space-y-6">
