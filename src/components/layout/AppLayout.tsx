@@ -80,7 +80,10 @@ export default function AppLayout() {
   const current = navItems.find(i =>
     i.end ? location.pathname === i.to : location.pathname.startsWith(i.to)
   )
-  const currentLabel = current ? t(current.labelKey) : t('shell.panel')
+  // En la app de Android «Comprar folios» no existe: ahí es «Mis folios».
+  const currentLabel = current
+    ? t(enApp() && current.to === '/app/folios' ? 'app.misFolios' : current.labelKey)
+    : t('shell.panel')
 
   // JSX en una variable (no un componente definido en el render): así React no
   // desmonta y vuelve a montar el menú en cada actualización.

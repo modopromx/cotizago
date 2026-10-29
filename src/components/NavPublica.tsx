@@ -35,7 +35,7 @@ export default function NavPublica() {
         <Link to="/app" aria-label="Cotiza Go" className="hover:opacity-80 transition-opacity"><Logo className="h-10" /></Link>
         <div className="flex items-center gap-2">
           <SelectorIdioma />
-          <Link to="/app" className="btn-navy">{t('app.volver')}</Link>
+          <Link to="/app" className="btn-navy whitespace-nowrap text-xs px-3">{t('app.volver')}</Link>
         </div>
       </div>
     </header>
