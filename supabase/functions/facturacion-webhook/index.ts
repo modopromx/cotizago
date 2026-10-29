@@ -9,7 +9,9 @@
 // guarda la clave del pedido (order_key) y el correo lleva a «Mi cuenta › Pedidos»
 // de la tienda (facturacion_apps.cuenta_url), no a un enlace con el folio.
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
+// (29-oct-2026) nodemailer en vez de denomailer: denomailer se comía puntos al
+// partir líneas largas y los enlaces llegaban rotos (cotizago.commx).
+import nodemailer from 'npm:nodemailer@6.9.16'
 const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 const DEFECTO = 'https://cotizago.com.mx/facturar'
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type, x-wc-webhook-signature', 'Access-Control-Allow-Methods': 'POST, OPTIONS' }
@@ -50,9 +52,9 @@ async function enviarCorreo(para: string, vars: Record<string, string>) {
     const asunto = render(tpl.asunto, v)
     const html = tpl.cuerpo_html ? render(tpl.cuerpo_html, vHtml) : `<pre>${esc(render(tpl.cuerpo, v))}</pre>`
     const texto = render(tpl.cuerpo, v)
-    const client = new SMTPClient({ connection: { hostname: host, port, tls: port === 465, auth: { username: fromEmail, password: pass } } })
-    await client.send({ from: `${fromNombre} <${fromEmail}>`, to: para, subject: asunto, content: texto, html })
-    await client.close()
+    const t = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user: fromEmail, pass }, connectionTimeout: 15000 })
+    await t.sendMail({ from: `${fromNombre} <${fromEmail}>`, to: para, subject: asunto, text: texto, html })
+    t.close()
     return { ok: true }
   } catch (e) { return { ok: false, detalle: String(e).slice(0, 200) } }
 }

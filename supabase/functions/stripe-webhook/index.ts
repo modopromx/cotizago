@@ -18,6 +18,7 @@
 // llama a factura-automatica en segundo plano; si falla, el cron horario la retoma.
 import Stripe from 'npm:stripe@17'
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import nodemailer from 'npm:nodemailer@6.9.16'
 
 async function getSecret(admin, clave) {
   const { data } = await admin.from('plataforma_secretos').select('valor').eq('clave', clave).maybeSingle()
@@ -26,11 +27,17 @@ async function getSecret(admin, clave) {
 
 const render = (txt, vars) => (txt ?? '').replace(/\{\{(\w+)\}\}/g, (_m, k) => vars[k] ?? '')
 
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]))
+
+/** Correo «recarga confirmada». (29-oct-2026) Sale por el SMTP de la plataforma
+ *  (Hostinger) con nodemailer: antes dependía de una llave de Resend que nunca se
+ *  configuró, así que no le llegaba a nadie. */
 async function avisarRecarga(admin, pago) {
   try {
-    const { data: rk } = await admin.from('plataforma_secretos').select('valor').eq('clave','resend_api_key').maybeSingle()
-    const apiKey = (rk && rk.valor) || Deno.env.get('RESEND_API_KEY') || ''
-    if (!apiKey) return
+    const { data: sec } = await admin.from('plataforma_secretos').select('valor').eq('clave', 'smtp_password').maybeSingle()
+    const pass = (sec && sec.valor) || ''
+    if (!pass) return
     const { data: prof } = await admin.from('profiles').select('email,nombre,folios_balance').eq('id', pago.user_id).single()
     if (!prof?.email) return
     const { data: tpl } = await admin.from('email_templates').select('*').eq('clave', 'recarga_exitosa').maybeSingle()
@@ -48,19 +55,25 @@ async function avisarRecarga(admin, pago) {
       fecha: new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }),
       saldo_actual: String(prof.folios_balance ?? 0),
     }
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: `${c.smtp_from_nombre || 'Cotiza Go'} <${c.smtp_from || 'no-reply@cotizago.com.mx'}>`,
-        to: [prof.email], subject: render(tpl.asunto, vars),
-        html: tpl.cuerpo_html ? render(tpl.cuerpo_html, vars) : `<pre>${render(tpl.cuerpo, vars)}</pre>`,
+    if (!c.smtp_host || !c.smtp_from) return
+    const varsHtml = {}
+    for (const k of Object.keys(vars)) varsHtml[k] = esc(vars[k])
+    let ok = false
+    try {
+      const port = Number(c.smtp_port || 465)
+      const t = nodemailer.createTransport({ host: c.smtp_host, port, secure: port === 465, auth: { user: c.smtp_from, pass }, connectionTimeout: 15000 })
+      await t.sendMail({
+        from: `${c.smtp_from_nombre || 'Cotiza Go'} <${c.smtp_from}>`,
+        to: prof.email, subject: render(tpl.asunto, vars),
+        html: tpl.cuerpo_html ? render(tpl.cuerpo_html, varsHtml) : `<pre>${esc(render(tpl.cuerpo, vars))}</pre>`,
         text: render(tpl.cuerpo, vars),
-      }),
-    })
+      })
+      t.close()
+      ok = true
+    } catch (_) { /* se registra como fallido */ }
     await admin.from('email_envios').insert({
       workspace_id: pago.workspace_id, destinatario: prof.email,
-      asunto: render(tpl.asunto, vars), estado: res.ok ? 'enviado' : 'fallido',
+      asunto: render(tpl.asunto, vars), estado: ok ? 'enviado' : 'fallido',
     })
   } catch (_) { /* el correo no debe romper el webhook */ }
 }

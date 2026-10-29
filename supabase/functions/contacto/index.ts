@@ -5,7 +5,8 @@
 // nunca la IP en claro) y 40 al día en total. Antes no había tope y un bot podía
 // agotar la cuota del correo que también usan los avisos de la app.
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
+// (29-oct-2026) nodemailer en vez de denomailer (se comía puntos de los enlaces).
+import nodemailer from 'npm:nodemailer@6.9.16'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -74,18 +75,16 @@ Deno.serve(async (req) => {
       <p style="white-space:pre-wrap;border-left:3px solid #08AEB6;padding-left:10px">${esc(msg)}</p>
     </div>`
 
-    const client = new SMTPClient({
-      connection: { hostname: host, port, tls: port === 465, auth: { username: fromEmail, password: pass } },
-    })
-    await client.send({
+    const t = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user: fromEmail, pass }, connectionTimeout: 15000 })
+    await t.sendMail({
       from: `${fromNombre} <${fromEmail}>`,
       to: fromEmail,                       // llega al buzón de la plataforma
       replyTo: `${nom} <${mail}>`,         // responder = responderle al visitante
       subject: `Contacto web · ${nom}`,
-      content: `De: ${nom} <${mail}>\n\n${msg}`,
+      text: `De: ${nom} <${mail}>\n\n${msg}`,
       html,
     })
-    await client.close()
+    t.close()
 
     return json({ ok: true })
   } catch (e) {

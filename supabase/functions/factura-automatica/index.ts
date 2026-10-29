@@ -12,7 +12,9 @@
 // Llamadas: SOLO internas. stripe-webhook manda x-cg-interna (service key);
 // el cron manda x-cron (token en Vault; aquí se compara su sha256).
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
+// (29-oct-2026) nodemailer en vez de denomailer: denomailer se comía puntos al
+// partir líneas largas y los enlaces llegaban rotos (cotizago.commx).
+import nodemailer from 'npm:nodemailer@6.9.16'
 
 const COTIZAGO_APP = '3b024f16-b561-45dc-a6e1-e52f7e881b2e'
 const OMAR = '401792b3-e929-44e5-80fc-4a0a66b587ed'
@@ -53,12 +55,12 @@ async function correo(para: string[], asunto: string, texto: string) {
     const { data: sec } = await admin.from('plataforma_secretos').select('valor').eq('clave', 'smtp_password').maybeSingle()
     if (!c.smtp_host || !c.smtp_from || !sec?.valor) return
     const port = Number(c.smtp_port || 465)
-    const client = new SMTPClient({ connection: { hostname: c.smtp_host, port, tls: port === 465, auth: { username: c.smtp_from, password: sec.valor } } })
-    await client.send({
-      from: `${c.smtp_from_nombre || 'Cotiza Go'} <${c.smtp_from}>`, to: [...new Set(para.filter(Boolean))], subject: asunto, content: texto,
+    const t = nodemailer.createTransport({ host: c.smtp_host, port, secure: port === 465, auth: { user: c.smtp_from, pass: sec.valor }, connectionTimeout: 15000 })
+    await t.sendMail({
+      from: `${c.smtp_from_nombre || 'Cotiza Go'} <${c.smtp_from}>`, to: [...new Set(para.filter(Boolean))], subject: asunto, text: texto,
       html: `<div style="font-family:sans-serif;font-size:14px;color:#222;white-space:pre-wrap">${esc(texto)}</div>`,
     })
-    await client.close()
+    t.close()
   } catch (_) { /* el aviso no debe romper la factura */ }
 }
 
