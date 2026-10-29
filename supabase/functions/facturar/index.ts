@@ -9,6 +9,8 @@
 //  - Ventas de WooCommerce: además la clave del pedido (order_key), que la tienda
 //    solo muestra a su dueño en «Mi cuenta» (botón Facturar).
 //  - Ventas por API: la clave_acceso aleatoria que la app enseña a su cliente.
+// (29-oct-2026) Apps en grupo (Fidelízalo: tienda + panel): el pedido de la tienda
+// encuentra la factura que el negocio ya sacó desde su panel, y viceversa.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const BASE = Deno.env.get('SUPABASE_URL')!
@@ -83,13 +85,22 @@ async function esDueno(f: any, input: any, req: Request): Promise<boolean> {
   // Venta de una tienda/app: su clave de acceso.
   const k = String(input.k ?? '').trim()
   if (!f.app_id || !k) return false
-  if (f.clave_acceso) return iguales(k, f.clave_acceso)
-  // Ventas de Woo creadas antes de guardar la clave: se valida contra la tienda y se guarda.
-  const { data: app } = await admin.from('facturacion_apps').select('woo_url, woo_consumer_key, woo_consumer_secret').eq('id', f.app_id).maybeSingle()
-  const order = f.referencia_externa ? await pedidoWoo(app, String(f.referencia_externa)) : null
-  if (!order?.order_key || !iguales(k, String(order.order_key))) return false
-  await admin.from('facturables').update({ clave_acceso: String(order.order_key) }).eq('id', f.id)
-  return true
+  if (f.clave_acceso && iguales(k, f.clave_acceso)) return true
+  // Si no, se valida contra la tienda: la clave del pedido (order_key) que solo ve su
+  // dueño. Sirve para ventas de Woo creadas antes de guardar la clave y para el mismo
+  // pago registrado por otra app del grupo (Fidelízalo: el panel y la tienda).
+  if (!f.referencia_externa) return false
+  const { data: grupo } = await admin.rpc('apps_del_grupo', { p_app: f.app_id })
+  const ids = Array.isArray(grupo) && grupo.length ? grupo : [f.app_id]
+  const { data: tiendas } = await admin.from('facturacion_apps').select('id, woo_url, woo_consumer_key, woo_consumer_secret').in('id', ids).not('woo_url', 'is', null)
+  for (const app of tiendas ?? []) {
+    const order = await pedidoWoo(app, String(f.referencia_externa))
+    if (order?.order_key && iguales(k, String(order.order_key))) {
+      if (!f.clave_acceso && app.id === f.app_id) await admin.from('facturables').update({ clave_acceso: String(order.order_key) }).eq('id', f.id)
+      return true
+    }
+  }
+  return false
 }
 
 Deno.serve(async (req) => {
@@ -112,9 +123,19 @@ Deno.serve(async (req) => {
       if (!order) return json({ ok: false, motivo: 'pedido_no_encontrado' })
       if (!order.order_key || !iguales(k, String(order.order_key))) return json({ ok: false, motivo: 'sin_clave', error: NO_AUT }, 403)
 
-      const { data: existe } = await admin.from('facturables').select('id, token, estado, fecha_limite, clave_acceso').eq('app_id', app_id).eq('referencia_externa', pedido).maybeSingle()
+      let { data: existe } = await admin.from('facturables').select('id, app_id, token, estado, fecha_limite, clave_acceso').eq('app_id', app_id).eq('referencia_externa', pedido).maybeSingle()
+      // El mismo pago pudo registrarse desde otra app del grupo (Fidelízalo: el panel
+      // del negocio). Si allá ya se facturó, aquí se muestra esa misma factura.
+      const { data: grupo } = await admin.rpc('apps_del_grupo', { p_app: app_id })
+      if (Array.isArray(grupo) && grupo.length > 1) {
+        const { data: gemelos } = await admin.from('facturables').select('id, app_id, token, estado, fecha_limite, clave_acceso')
+          .in('app_id', grupo).neq('app_id', app_id).eq('referencia_externa', pedido)
+        const hecho = (gemelos ?? []).find((g: any) => g.estado === 'facturado' || g.estado === 'timbrando')
+        if (hecho && existe?.estado !== 'facturado') existe = hecho
+        else if (!existe && gemelos?.length) existe = gemelos[0]
+      }
       if (existe) {
-        if (!existe.clave_acceso) await admin.from('facturables').update({ clave_acceso: String(order.order_key) }).eq('id', existe.id)
+        if (!existe.clave_acceso && existe.app_id === app_id) await admin.from('facturables').update({ clave_acceso: String(order.order_key) }).eq('id', existe.id)
         if (existe.estado !== 'facturado' && vencido(existe.fecha_limite)) return json({ ok: false, motivo: 'fuera_de_mes' })
         return json({ ok: true, token: existe.token })
       }

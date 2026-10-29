@@ -5,6 +5,9 @@
 // (28-oct-2026) Llama a 'facturacion' con la cabecera interna x-cg-interna.
 // (28-oct-2026) El enlace lleva &k=<clave_acceso>: sin esa clave el folio no
 // sirve. La app debe mostrarlo SOLO dentro de la cuenta de su cliente.
+// (29-oct-2026) Apps en grupo (facturacion_apps.grupo, p. ej. Fidelízalo panel +
+// tienda): estado/crear/timbrar ven los facturables de todo el grupo por
+// referencia_externa, así un pago se factura UNA vez aunque llegue por los dos lados.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const SITIO = 'https://cotizago.com.mx'
@@ -57,9 +60,30 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null)
     if (!body || typeof body !== 'object') return json({ error: 'Cuerpo JSON inválido' }, 400)
     const accion = body.accion || 'crear'
+    // Apps del mismo grupo (Fidelízalo: panel + tienda): un pago se factura una vez.
+    const { data: grupo } = await admin.rpc('apps_del_grupo', { p_app: app.id })
+    const apps: string[] = Array.isArray(grupo) && grupo.length ? grupo : [app.id]
+    /** El facturable de esta referencia en el grupo: primero el ya facturado, luego el propio. */
+    const delGrupo = async (ref: string) => {
+      const { data } = await admin.from('facturables').select('id, app_id, token, estado, total, factura_id, referencia_externa, clave_acceso')
+        .in('app_id', apps).eq('referencia_externa', ref)
+      const filas = data ?? []
+      return filas.find((f: any) => f.estado === 'facturado') ?? filas.find((f: any) => f.estado === 'timbrando')
+        ?? filas.find((f: any) => f.app_id === app.id) ?? filas[0] ?? null
+    }
 
     // ---- crear: registra una venta facturable y devuelve el enlace ----
     if (accion === 'crear') {
+      // Si este pago ya está registrado en el grupo (p. ej. por el webhook de la
+      // tienda), se devuelve ese mismo en vez de crear otro.
+      if (body.referencia_externa != null && String(body.referencia_externa) !== '') {
+        const ya = await delGrupo(String(body.referencia_externa))
+        if (ya) {
+          let clave = ya.clave_acceso
+          if (!clave) { clave = claveNueva(); await admin.from('facturables').update({ clave_acceso: clave }).eq('id', ya.id) }
+          return json({ ok: true, token: ya.token, facturar_url: enlace(ya.token, clave), referencia_externa: ya.referencia_externa, total: ya.total, estado: ya.estado, existente: true })
+        }
+      }
       let conceptos = Array.isArray(body.conceptos) ? body.conceptos : null
       if (!conceptos) {
         // modo simple: descripcion + total (el total ya incluye IVA)
@@ -83,9 +107,15 @@ Deno.serve(async (req) => {
 
     // ---- estado: consulta por referencia_externa o token ----
     if (accion === 'estado') {
-      let q = admin.from('facturables').select('id, token, estado, total, factura_id, referencia_externa, clave_acceso').eq('app_id', app.id)
-      q = body.token ? q.eq('token', body.token) : q.eq('referencia_externa', String(body.referencia_externa ?? ''))
-      const { data: f } = await q.maybeSingle()
+      let f: any = null
+      if (body.token) {
+        const { data } = await admin.from('facturables').select('id, app_id, token, estado, total, factura_id, referencia_externa, clave_acceso').in('app_id', apps).eq('token', body.token).maybeSingle()
+        f = data
+        // Si este se quedó pendiente pero el mismo pago ya se facturó en otra app del grupo, vale ese.
+        if (f && f.estado !== 'facturado' && f.referencia_externa) f = (await delGrupo(String(f.referencia_externa))) ?? f
+      } else {
+        f = await delGrupo(String(body.referencia_externa ?? ''))
+      }
       if (!f) return json({ error: 'No encontrado' }, 404)
       let clave = f.clave_acceso
       if (!clave) { clave = claveNueva(); await admin.from('facturables').update({ clave_acceso: clave }).eq('id', f.id) }
@@ -99,9 +129,13 @@ Deno.serve(async (req) => {
 
     // ---- timbrar: la app ya tiene los datos fiscales del cliente ----
     if (accion === 'timbrar') {
-      const { data: f } = await admin.from('facturables').select('*').eq('app_id', app.id).eq('token', String(body.token ?? '')).maybeSingle()
+      const { data: f } = await admin.from('facturables').select('*').in('app_id', apps).eq('token', String(body.token ?? '')).maybeSingle()
       if (!f) return json({ error: 'Facturable no encontrado (envía token de un facturable creado)' }, 404)
       if (f.estado === 'facturado') return json({ error: 'Ya facturado' }, 409)
+      if (f.referencia_externa) {
+        const otro = await delGrupo(String(f.referencia_externa))
+        if (otro && otro.id !== f.id && otro.estado === 'facturado') return json({ error: 'Ya facturado' }, 409)
+      }
       const rc = body.receptor || {}
       if (!rc.rfc || !rc.nombre || !rc.cp || !rc.regimen) return json({ error: 'receptor requiere rfc, nombre, cp, regimen' }, 400)
       const { data: cred } = await admin.from('facturacion_credenciales').select('entorno').eq('clave', 'senhub').maybeSingle()

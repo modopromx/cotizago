@@ -7,6 +7,8 @@
 // (reservar_timbrado: 'pendiente' -> 'timbrando'); una segunda petición simultánea
 // recibe 409. La Idempotency-Key ya no es aleatoria: sale del facturable + los datos
 // enviados, así SENHUB devuelve el mismo CFDI si la misma petición llega dos veces.
+// (29-oct-2026) Apps en grupo (facturacion_apps.grupo): un pago que dos apps
+// registraron con la misma referencia_externa se timbra una sola vez.
 // (29-oct-2026) Solo compras en MXN: el CFDI se arma con moneda MXN y tipo de
 // cambio 1, así que una venta en dólares salía facturada como pesos.
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -120,9 +122,19 @@ Deno.serve(async (req) => {
       // Candado: una sola petición a la vez por facturable, y nunca si ya se facturó.
       const fid = input.facturable_id ?? null
       if (fid) {
-        const { data: fm } = await admin.from('facturables').select('moneda').eq('id', fid).maybeSingle()
+        const { data: fm } = await admin.from('facturables').select('moneda, app_id, referencia_externa').eq('id', fid).maybeSingle()
         const moneda = String(fm?.moneda || 'MXN').toUpperCase()
         if (moneda !== 'MXN') return json({ ok: false, error: `Esta compra se pagó en ${moneda}; por ahora solo se facturan compras en pesos mexicanos. Escríbenos y te ayudamos.` }, 409)
+        // Mismo pago registrado por otra app del grupo (Fidelízalo: tienda y panel):
+        // si allá ya se facturó o se está facturando, aquí no se vuelve a timbrar.
+        if (fm?.app_id && fm.referencia_externa) {
+          const { data: grupo } = await admin.rpc('apps_del_grupo', { p_app: fm.app_id })
+          if (Array.isArray(grupo) && grupo.length > 1) {
+            const { data: gemelo } = await admin.from('facturables').select('id').in('app_id', grupo)
+              .eq('referencia_externa', fm.referencia_externa).neq('id', fid).in('estado', ['facturado', 'timbrando']).limit(1).maybeSingle()
+            if (gemelo) return json({ ok: false, error: 'Esta compra ya fue facturada.' }, 409)
+          }
+        }
         const { data: reservado, error: eRes } = await admin.rpc('reservar_timbrado', { facturable: fid })
         if (eRes) return json({ ok: false, error: 'No se pudo apartar la factura: ' + eRes.message }, 500)
         if (!reservado) {
