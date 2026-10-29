@@ -170,6 +170,7 @@ const en: Dic = {
     modWa: 'Own WhatsApp', modEmail: 'Professional email',
   },
   cot: {
+    ttRecordatorio: 'WhatsApp reminder', ttAceptada: 'Thank them on WhatsApp', 
     subtitle: 'Create, view, duplicate, send and follow up.',
     tabTodas: 'All', tabPendientes: 'Pending', tabAceptadas: 'Accepted', tabRechazadas: 'Rejected', tabBorradores: 'Drafts',
     buscar: 'Search by number, client...', cargando: 'Loading...', sinCotis: 'You don’t have any quotes yet', sinResultados: 'No results for this filter',
@@ -260,6 +261,7 @@ const en: Dic = {
     verConversacion: 'View conversation', conversacion: 'Conversation', tu: 'You', escribePh: 'Write your message...', responder: 'Reply', respuestaEnviada: 'Message sent',
   },
   plt: {
+    usoWa: 'Used when you send the quote by WhatsApp.', usoRecordatorio: 'Sent by WhatsApp from Quotes with the reminder button (sent or viewed quotes).', usoAceptada: 'Sent by WhatsApp from Quotes with the thank-you button (accepted quotes).', usoEmail: 'Only used if you connect your own email in Modules › Professional email. Without it, the email uses the Cotiza Go design.', 
     cargando: 'Loading...', title: 'Message templates', subtitle: 'Customize the automatic messages for each channel and moment.',
     email: 'Email', asunto: 'Subject', mensaje: 'Message', insertarVar: 'Insert variable', enviarPrueba: 'Send test', guardar: 'Save', vistaPrevia: 'Preview',
     errorGuardar: 'Error saving', guardada: 'Template "{{nombre}}" saved', pruebaAviso: 'Test sending available once you connect your channel',

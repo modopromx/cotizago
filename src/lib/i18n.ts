@@ -180,6 +180,7 @@ const es = {
     modWa: 'WhatsApp propio', modEmail: 'Email profesional',
   },
   cot: {
+    ttRecordatorio: 'Recordatorio por WhatsApp', ttAceptada: 'Agradecer por WhatsApp', 
     subtitle: 'Crea, consulta, duplica, envía y da seguimiento.',
     tabTodas: 'Todas', tabPendientes: 'Pendientes', tabAceptadas: 'Aceptadas', tabRechazadas: 'Rechazadas', tabBorradores: 'Borradores',
     buscar: 'Buscar por folio, cliente...', cargando: 'Cargando...', sinCotis: 'Aún no tienes cotizaciones', sinResultados: 'Sin resultados en este filtro',
@@ -270,6 +271,7 @@ const es = {
     verConversacion: 'Ver conversación', conversacion: 'Conversación', tu: 'Tú', escribePh: 'Escribe tu mensaje...', responder: 'Responder', respuestaEnviada: 'Mensaje enviado',
   },
   plt: {
+    usoWa: 'Se usa al enviar la cotización por WhatsApp.', usoRecordatorio: 'Se manda por WhatsApp desde Cotizaciones con el botón de recordatorio (cotizaciones enviadas o vistas).', usoAceptada: 'Se manda por WhatsApp desde Cotizaciones con el botón de agradecer (cotizaciones aceptadas).', usoEmail: 'Solo se usa si conectas tu propio correo en Módulos › Email profesional. Sin él, el correo sale con el diseño de Cotiza Go.', 
     cargando: 'Cargando...', title: 'Plantillas de mensajes', subtitle: 'Personaliza los mensajes automáticos para cada canal y momento.',
     email: 'Email', asunto: 'Asunto', mensaje: 'Mensaje', insertarVar: 'Insertar variable', enviarPrueba: 'Enviar prueba', guardar: 'Guardar', vistaPrevia: 'Vista previa',
     errorGuardar: 'Error al guardar', guardada: 'Plantilla "{{nombre}}" guardada', pruebaAviso: 'Envío de prueba disponible al conectar tu canal',

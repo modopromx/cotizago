@@ -102,6 +102,15 @@ export default function PlantillasPage() {
         <div className="lg:col-span-2 grid md:grid-cols-2 gap-4">
           <div className="card p-5 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{sel?.canal === 'email' ? t('plt.email') : 'WhatsApp'}</p>
+            {/* Cuándo se usa: evita que el usuario crea que una plantilla sale sola. */}
+            {sel && (
+              <p className="text-xs text-navy-700 bg-primary-50/60 border border-primary-100 rounded-lg px-3 py-2">
+                {sel.canal === 'email' ? t('plt.usoEmail')
+                  : sel.momento === 'recordatorio' ? t('plt.usoRecordatorio')
+                  : sel.momento === 'aceptada' ? t('plt.usoAceptada')
+                  : t('plt.usoWa')}
+              </p>
+            )}
             {sel?.canal === 'email' && (
               <div><label htmlFor="plt-asunto" className="label">{t('plt.asunto')}</label><input id="plt-asunto" className="input" value={draft.asunto} onChange={e => setDraft(d => ({ ...d, asunto: e.target.value }))} /></div>
             )}
@@ -119,7 +128,6 @@ export default function PlantillasPage() {
               </div>
             </div>
             <div className="flex gap-2 pt-1">
-              <button onClick={() => toast(t('plt.pruebaAviso'), { icon: '📨' })} className="btn-secondary flex-1 justify-center text-xs">{t('plt.enviarPrueba')}</button>
               <button onClick={guardar} disabled={saving} className="btn-navy flex-1 justify-center text-xs">
                 {saving ? <span role="status" aria-label="Cargando" className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-3.5 h-3.5" aria-hidden="true" />} {t('plt.guardar')}
               </button>

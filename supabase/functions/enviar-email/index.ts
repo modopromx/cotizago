@@ -10,6 +10,10 @@
 //  - cotizacion_enviada: solo para una cotizacion del usuario (RLS) que ya se
 //    envio y consumio folio; el destinatario es el cliente de esa cotizacion.
 //  - Toda variable se escapa antes de entrar al HTML.
+// (29-oct-2026) CORREO PROPIO: si la cuenta tiene el módulo email_profesional
+// activo y configuró su servidor (integraciones.tipo='email'), la cotización sale
+// desde SU correo con SU plantilla (plantillas_mensajes canal email, envío inicial).
+// Si no, sale como siempre: buzón de Cotiza Go y diseño del sistema.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 
@@ -67,6 +71,7 @@ Deno.serve(async (req) => {
     let para = ''
     let replyTo = ''
     let vars = {}
+    let wsCot = ''
     if (PROPIOS.includes(clave)) {
       para = user.email ?? ''
       const saldo = Number(prof?.folios_balance ?? 0)
@@ -90,6 +95,7 @@ Deno.serve(async (req) => {
       if (!cot) return json({ error: 'Cotizacion no encontrada' }, 404)
       if (!cot.folio_consumido) return json({ error: 'Primero envia la cotizacion (consume 1 folio).' }, 400)
       para = cot.cliente_email ?? ''
+      wsCot = cot.workspace_id
       const { data: emp } = await admin.from('empresas').select('*').eq('workspace_id', cot.workspace_id).maybeSingle()
       replyTo = emailValido(emp?.email) ? emp.email : ''
       vars = {
@@ -122,6 +128,27 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ¿La cuenta conectó su propio correo? (módulo pagado + servidor configurado)
+    let propio: null | { host: string; port: number; usuario: string; pass: string; from: string; nombre: string } = null
+    let tplPropia: any = null
+    if (clave === 'cotizacion_enviada' && wsCot) {
+      const [{ data: activo }, { data: integ }] = await Promise.all([
+        admin.rpc('modulo_activo', { p_workspace: wsCot, p_clave: 'email_profesional' }),
+        admin.from('integraciones').select('config, secreto, activa').eq('workspace_id', wsCot).eq('tipo', 'email').maybeSingle(),
+      ])
+      const cfgP = integ?.config ?? {}
+      if (activo && integ?.activa && cfgP.host && integ.secreto && emailValido(cfgP.from_email)) {
+        propio = {
+          host: String(cfgP.host), port: Number(cfgP.puerto || 587),
+          usuario: String(cfgP.usuario || cfgP.from_email), pass: String(integ.secreto),
+          from: String(cfgP.from_email), nombre: corto(cfgP.from_nombre || vars['empresa'] || '', 80),
+        }
+        const { data: tp } = await admin.from('plantillas_mensajes').select('asunto, cuerpo')
+          .eq('workspace_id', wsCot).eq('canal', 'email').eq('momento', 'envio_inicial').maybeSingle()
+        if (tp?.cuerpo?.trim()) tplPropia = tp
+      }
+    }
+
     const { data: tpl } = await admin.from('email_templates').select('*').eq('clave', clave).maybeSingle()
     if (!tpl) return json({ error: 'Plantilla no encontrada' }, 404)
 
@@ -134,32 +161,46 @@ Deno.serve(async (req) => {
     const fromEmail = c.smtp_from
     const fromNombre = c.smtp_from_nombre || 'Cotiza Go'
     const pass = await getSecret(admin, 'smtp_password')
-    if (!host || !fromEmail || !pass) {
+    if (!propio && (!host || !fromEmail || !pass)) {
       return json({ error: 'El administrador aun no configuro el servicio de correo (SMTP).' }, 400)
     }
 
     vars = { plataforma: c.nombre_plataforma || 'Cotiza Go', ...vars }
-    const asunto = corto(render(tpl.asunto, vars, false), 200)
-    const texto = render(tpl.cuerpo, vars, false)
-    const html = tpl.cuerpo_html ? render(tpl.cuerpo_html, vars, true) : `<pre style="font-family:sans-serif">${esc(texto)}</pre>`
+    let asunto: string, texto: string, html: string
+    if (propio && tplPropia) {
+      // Plantilla del usuario (texto): se escapa y el enlace queda clicable.
+      asunto = corto(render(tplPropia.asunto || 'Cotización {{folio}} de {{empresa}}', vars, false), 200)
+      texto = render(tplPropia.cuerpo, vars, false)
+      const enlace = String(vars['enlace_publico'] || '')
+      let cuerpoHtml = esc(texto).replace(/\n/g, '<br>')
+      if (enlace) cuerpoHtml = cuerpoHtml.split(esc(enlace)).join(`<a href="${esc(enlace)}">${esc(enlace)}</a>`)
+      html = `<div style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1e293b">${cuerpoHtml}</div>`
+    } else {
+      asunto = corto(render(tpl.asunto, vars, false), 200)
+      texto = render(tpl.cuerpo, vars, false)
+      html = tpl.cuerpo_html ? render(tpl.cuerpo_html, vars, true) : `<pre style="font-family:sans-serif">${esc(texto)}</pre>`
+    }
 
     let ok = false, detalle = ''
     try {
+      const srv = propio
+        ? { hostname: propio.host, port: propio.port, user: propio.usuario, pass: propio.pass, from: propio.nombre ? `${propio.nombre} <${propio.from}>` : propio.from, reply: propio.from }
+        : { hostname: host, port, user: fromEmail, pass, from: `${fromNombre} <${fromEmail}>`, reply: replyTo }
       const client = new SMTPClient({
         connection: {
-          hostname: host,
-          port,
-          tls: port === 465, // 465 = TLS implicito; 587 = STARTTLS
-          auth: { username: fromEmail, password: pass },
+          hostname: srv.hostname,
+          port: srv.port,
+          tls: srv.port === 465, // 465 = TLS implicito; 587 = STARTTLS
+          auth: { username: srv.user, password: srv.pass },
         },
       })
       await client.send({
-        from: `${fromNombre} <${fromEmail}>`,
+        from: srv.from,
         to: para,
         subject: asunto,
         content: texto,
         html,
-        ...(replyTo ? { replyTo } : {}),
+        ...(srv.reply ? { replyTo: srv.reply } : {}),
       })
       await client.close()
       ok = true
@@ -172,7 +213,7 @@ Deno.serve(async (req) => {
       estado: ok ? 'enviado' : 'fallido',
     })
 
-    if (!ok) return json({ error: 'No se pudo enviar el correo por SMTP', detalle }, 502)
+    if (!ok) return json({ error: propio ? 'No se pudo enviar con tu correo. Revisa los datos en Módulos › Email profesional.' : 'No se pudo enviar el correo por SMTP', detalle }, 502)
     return json({ ok: true })
   } catch (e) {
     return json({ error: String(e) }, 500)

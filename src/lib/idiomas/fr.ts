@@ -170,6 +170,7 @@ const fr: Dic = {
     modWa: 'WhatsApp personnel', modEmail: 'E-mail professionnel',
   },
   cot: {
+    ttRecordatorio: 'Relance par WhatsApp', ttAceptada: 'Remercier par WhatsApp', 
     subtitle: 'Créez, consultez, dupliquez, envoyez et suivez.',
     tabTodas: 'Tous', tabPendientes: 'En attente', tabAceptadas: 'Acceptés', tabRechazadas: 'Refusés', tabBorradores: 'Brouillons',
     buscar: 'Rechercher par n°, client...', cargando: 'Chargement...', sinCotis: 'Vous n’avez pas encore de devis', sinResultados: 'Aucun résultat pour ce filtre',
@@ -260,6 +261,7 @@ const fr: Dic = {
     verConversacion: 'Voir la conversation', conversacion: 'Conversation', tu: 'Vous', escribePh: 'Écrivez votre message...', responder: 'Répondre', respuestaEnviada: 'Message envoyé',
   },
   plt: {
+    usoWa: 'Utilisé quand vous envoyez le devis par WhatsApp.', usoRecordatorio: 'Envoyé par WhatsApp depuis Devis avec le bouton de relance (devis envoyés ou vus).', usoAceptada: 'Envoyé par WhatsApp depuis Devis avec le bouton de remerciement (devis acceptés).', usoEmail: 'Utilisé seulement si vous connectez votre propre e-mail dans Modules › E-mail professionnel. Sinon, l’e-mail utilise le design de Cotiza Go.', 
     cargando: 'Chargement...', title: 'Modèles de messages', subtitle: 'Personnalisez les messages automatiques pour chaque canal et moment.',
     email: 'E-mail', asunto: 'Objet', mensaje: 'Message', insertarVar: 'Insérer une variable', enviarPrueba: 'Envoyer un test', guardar: 'Enregistrer', vistaPrevia: 'Aperçu',
     errorGuardar: 'Erreur d’enregistrement', guardada: 'Modèle « {{nombre}} » enregistré', pruebaAviso: 'Envoi de test disponible après connexion de votre canal',

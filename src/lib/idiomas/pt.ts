@@ -170,6 +170,7 @@ const pt: Dic = {
     modWa: 'WhatsApp próprio', modEmail: 'E-mail profissional',
   },
   cot: {
+    ttRecordatorio: 'Lembrete por WhatsApp', ttAceptada: 'Agradecer por WhatsApp', 
     subtitle: 'Crie, consulte, duplique, envie e acompanhe.',
     tabTodas: 'Todos', tabPendientes: 'Pendentes', tabAceptadas: 'Aceitos', tabRechazadas: 'Recusados', tabBorradores: 'Rascunhos',
     buscar: 'Buscar por número, cliente...', cargando: 'Carregando...', sinCotis: 'Você ainda não tem orçamentos', sinResultados: 'Sem resultados para este filtro',
@@ -260,6 +261,7 @@ const pt: Dic = {
     verConversacion: 'Ver conversa', conversacion: 'Conversa', tu: 'Você', escribePh: 'Escreva sua mensagem...', responder: 'Responder', respuestaEnviada: 'Mensagem enviada',
   },
   plt: {
+    usoWa: 'Usado ao enviar o orçamento por WhatsApp.', usoRecordatorio: 'Enviado por WhatsApp em Orçamentos com o botão de lembrete (orçamentos enviados ou vistos).', usoAceptada: 'Enviado por WhatsApp em Orçamentos com o botão de agradecer (orçamentos aceitos).', usoEmail: 'Só é usado se você conectar seu próprio e-mail em Módulos › E-mail profissional. Sem ele, o e-mail sai com o design do Cotiza Go.', 
     cargando: 'Carregando...', title: 'Modelos de mensagens', subtitle: 'Personalize as mensagens automáticas para cada canal e momento.',
     email: 'E-mail', asunto: 'Assunto', mensaje: 'Mensagem', insertarVar: 'Inserir variável', enviarPrueba: 'Enviar teste', guardar: 'Salvar', vistaPrevia: 'Pré-visualização',
     errorGuardar: 'Erro ao salvar', guardada: 'Modelo "{{nombre}}" salvo', pruebaAviso: 'Envio de teste disponível ao conectar seu canal',

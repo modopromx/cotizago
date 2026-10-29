@@ -8,7 +8,7 @@ import { descargarCotizacion } from '../../lib/cotizacionPdf'
 import { llenarPlantilla, abrirWhatsApp } from '../../lib/plantillas'
 import { enviarCotizacionPorEmail, generarLinkWhatsApp } from '../../lib/envios'
 import toast from 'react-hot-toast'
-import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink, Download, Copy, Ban, Mail, Eye, MoreHorizontal } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, Link2, FileText, MessageCircle, ExternalLink, Download, Copy, Ban, Mail, Eye, MoreHorizontal, BellRing, PartyPopper } from 'lucide-react'
 
 const ESTADO_BADGE: Record<string, string> = {
   aceptada: 'bg-success-50 text-success-700',
@@ -91,6 +91,9 @@ export default function CotizacionesPage() {
   const [tab, setTab] = useState('todas')
 
   const [plantillaWA, setPlantillaWA] = useState<string>('')
+  // Plantillas de seguimiento por WhatsApp (recordatorio / aceptada): se mandan a
+  // mano desde la lista, con el texto que el usuario escribió en Plantillas.
+  const [plantillasSeg, setPlantillasSeg] = useState<Record<string, string>>({})
 
   const load = async () => {
     // Aísla al workspace propio: el superadmin tiene acceso amplio por RLS
@@ -107,9 +110,14 @@ export default function CotizacionesPage() {
 
   useEffect(() => {
     if (!profile?.workspace_id) return
-    supabase.from('plantillas_mensajes').select('cuerpo')
-      .eq('workspace_id', profile.workspace_id).eq('canal', 'whatsapp').eq('momento', 'envio_inicial').maybeSingle()
-      .then(({ data }) => setPlantillaWA(data?.cuerpo ?? 'Hola {{cliente}}, te comparto la cotización {{folio}} por {{total}}: {{enlace_publico}}'))
+    supabase.from('plantillas_mensajes').select('momento,cuerpo')
+      .eq('workspace_id', profile.workspace_id).eq('canal', 'whatsapp')
+      .then(({ data }) => {
+        const m: Record<string, string> = {}
+        ;(data ?? []).forEach((r: any) => { if (r.cuerpo?.trim()) m[r.momento] = r.cuerpo })
+        setPlantillaWA(m.envio_inicial ?? 'Hola {{cliente}}, te comparto la cotización {{folio}} por {{total}}: {{enlace_publico}}')
+        setPlantillasSeg(m)
+      })
   }, [profile?.workspace_id])
 
   const handleDelete = async (id: string) => {
@@ -170,6 +178,29 @@ export default function CotizacionesPage() {
     toast.success(fuente === 'walinker' ? t('cot.linkMarca') : t('cot.abriendoWa'), { id: tid })
     window.open(url, '_blank')
   }
+  // Seguimiento por WhatsApp con la plantilla del momento (no consume folio: la
+  // cotización ya se envió). 'recordatorio' si sigue pendiente, 'aceptada' si la aceptó.
+  const PLANTILLA_SEG: Record<string, string> = {
+    recordatorio: 'Hola {{cliente}}, ¿tuviste oportunidad de revisar la cotización {{folio}}? Sigue disponible aquí: {{enlace_publico}}',
+    aceptada: '¡Gracias {{cliente}}! Confirmamos la aceptación de la cotización {{folio}}. Pronto nos pondremos en contacto para los siguientes pasos.',
+  }
+  const handleSeguimiento = async (c: any, momento: 'recordatorio' | 'aceptada') => {
+    const enlace = `${window.location.origin}/c/${c.token}`
+    const msg = llenarPlantilla(plantillasSeg[momento] ?? PLANTILLA_SEG[momento], {
+      cliente: c.cliente_nombre || 'Hola', folio: c.numero,
+      total: formatCurrency(c.total, c.moneda), empresa: profile?.empresa ?? profile?.nombre ?? '',
+      enlace_publico: enlace, vendedor: profile?.nombre ?? '',
+    })
+    const digitos = (c.cliente_whatsapp ?? '').replace(/\D/g, '')
+    if (digitos.length < 10) { abrirWhatsApp(msg, undefined); toast(t('cot.sinWa'), { icon: '📱', duration: 5000 }); return }
+    const { url } = await generarLinkWhatsApp({ telefono: digitos, mensaje: msg, referencia: c.numero, cotizacionId: c.id })
+    window.open(url, '_blank')
+  }
+  const seguimientoDe = (c: any) =>
+    ['enviada', 'vista'].includes(c.estado) ? { momento: 'recordatorio' as const, label: t('cot.ttRecordatorio'), Icon: BellRing }
+    : c.estado === 'aceptada' ? { momento: 'aceptada' as const, label: t('cot.ttAceptada'), Icon: PartyPopper }
+    : null
+
   const handleEmail = async (c: any) => {
     if (!(await marcarEnviada(c))) return
     const tid = toast.loading(t('cot.enviandoCorreo'))
@@ -228,6 +259,7 @@ export default function CotizacionesPage() {
   const accionesDe = (c: any): Accion[] => [
     { key: 'pdf', label: t('cot.ttPdf'), Icon: Download, onClick: () => handlePDF(c.id) },
     ...(c.estado === 'borrador' ? [] : [{ key: 'wa', label: t('cot.ttWa'), Icon: MessageCircle, onClick: () => handleWhatsApp(c) }]),
+    ...(() => { const sg = seguimientoDe(c); return sg ? [{ key: 'seguimiento', label: sg.label, Icon: sg.Icon, onClick: () => handleSeguimiento(c, sg.momento) }] : [] })(),
     { key: 'email', label: c.cliente_email ? t('cot.ttEmail') : t('cot.ttEmailNo'), Icon: Mail, onClick: () => handleEmail(c), disabled: !c.cliente_email },
     { key: 'enlace', label: t('cot.ttEnlace'), Icon: Link2, onClick: () => handleCopy(c) },
     ...(c.estado === 'borrador' ? [{ key: 'ver', label: t('cot.ttVer'), Icon: ExternalLink, onClick: () => handleVer(c) }] : []),
@@ -348,6 +380,7 @@ export default function CotizacionesPage() {
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => handlePDF(c.id)} title={t('cot.ttPdf')} aria-label={t('cot.ttPdf')} className={`${BTN_ICONO} hover:text-navy-700 hover:bg-slate-100`}><Download className="w-4 h-4" aria-hidden="true" /></button>
                         <button data-tour="cot-enviar" onClick={() => handleWhatsApp(c)} title={t('cot.ttWa')} aria-label={t('cot.ttWa')} className={`${BTN_ICONO} hover:text-success-600 hover:bg-success-50`}><MessageCircle className="w-4 h-4" aria-hidden="true" /></button>
+                        {(() => { const sg = seguimientoDe(c); return sg ? <button onClick={() => handleSeguimiento(c, sg.momento)} title={sg.label} aria-label={sg.label} className={`${BTN_ICONO} hover:text-success-600 hover:bg-success-50`}><sg.Icon className="w-4 h-4" aria-hidden="true" /></button> : null })()}
                         <button onClick={() => handleEmail(c)} disabled={!c.cliente_email} title={c.cliente_email ? t('cot.ttEmail') : t('cot.ttEmailNo')} aria-label={c.cliente_email ? t('cot.ttEmail') : t('cot.ttEmailNo')} className={`${BTN_ICONO} hover:text-azul-600 hover:bg-azul-50 disabled:opacity-30 disabled:hover:bg-transparent`}><Mail className="w-4 h-4" aria-hidden="true" /></button>
                         <button onClick={() => handleCopy(c)} title={t('cot.ttEnlace')} aria-label={t('cot.ttEnlace')} className={`${BTN_ICONO} hover:text-azul-600 hover:bg-azul-50`}><Link2 className="w-4 h-4" aria-hidden="true" /></button>
                         <button onClick={() => handleVer(c)} title={t('cot.ttVer')} aria-label={t('cot.ttVer')} className={`${BTN_ICONO} hover:text-primary-700 hover:bg-primary-50`}><ExternalLink className="w-4 h-4" aria-hidden="true" /></button>
