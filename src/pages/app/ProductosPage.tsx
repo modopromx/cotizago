@@ -45,19 +45,21 @@ export default function ProductosPage() {
     setSaving(true)
     // Los campos numéricos se editan como texto (se pueden vaciar); aquí se convierten.
     const datos = { ...form, precio: Number(form.precio) || 0, iva: Number(form.iva) || 0 }
-    if (editing) {
-      await supabase.from('productos').update({ ...datos, updated_at: new Date().toISOString() }).eq('id', editing.id)
-      toast.success(t('prod.actualizado'))
-    } else {
-      await supabase.from('productos').insert({ ...datos, user_id: user.id })
-      toast.success(t('prod.creado'))
-    }
-    setModal(false); load(); setSaving(false)
+    // Antes se decía «guardado» sin revisar el error: si fallaba, el usuario creía
+    // que su producto existía. Ahora, si falla, la ventana sigue abierta con su dato.
+    const { error } = editing
+      ? await supabase.from('productos').update({ ...datos, updated_at: new Date().toISOString() }).eq('id', editing.id)
+      : await supabase.from('productos').insert({ ...datos, user_id: user.id })
+    setSaving(false)
+    if (error) { toast.error(t('qe.noGuardar') + error.message); return }
+    toast.success(editing ? t('prod.actualizado') : t('prod.creado'))
+    setModal(false); load()
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('prod.confEliminar'))) return
-    await supabase.from('productos').update({ activo: false }).eq('id', id)
+    const { error } = await supabase.from('productos').update({ activo: false }).eq('id', id)
+    if (error) { toast.error(t('qe.noGuardar') + error.message); return }
     toast.success(t('prod.eliminado')); load()
   }
 

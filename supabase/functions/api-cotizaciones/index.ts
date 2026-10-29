@@ -2,6 +2,9 @@
 // Autenticación por API key (Authorization: Bearer cg_live_...). La llave se
 // mapea a un workspace; la cotización se crea, se marca "enviada" (consume 1
 // folio, igual que en el panel) y se devuelve su enlace público.
+// (29-oct-2026) El folio se cobra con la RPC atómica consumir_folio_api (antes:
+// leer saldo y escribir saldo-1, y dos peticiones a la vez salían con un solo
+// folio). Y la llave debe ser del dueño del workspace: solo gasta SUS folios.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const cors = {
@@ -34,6 +37,10 @@ Deno.serve(async (req) => {
     if (!key || !key.activo) return json({ error: 'API key inválida o desactivada' }, 401)
     const ws = key.workspace_id as string
     const uid = key.user_id as string
+    // La llave solo vale si su usuario pertenece a ese workspace (llaves viejas
+    // pudieron crearse con el user_id de otra cuenta).
+    const { data: dueno } = await admin.from('profiles').select('workspace_id').eq('id', uid).maybeSingle()
+    if (!dueno || dueno.workspace_id !== ws) return json({ error: 'API key inválida o desactivada' }, 401)
     admin.from('api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', key.id).then(() => {})
 
     // 2) Datos de entrada
@@ -110,17 +117,16 @@ Deno.serve(async (req) => {
       orden: idx,
     })))
 
-    // 7) Consume 1 folio y marca "enviada" (para que el enlace público funcione)
-    const { data: saldoRow } = await admin.from('profiles')
-      .update({ folios_balance: (prof!.folios_balance as number) - 1 }).eq('id', uid).select('folios_balance').single()
-    const saldo = saldoRow?.folios_balance ?? 0
-    const { data: wsRow } = await admin.from('workspaces').select('folios_balance').eq('id', ws).maybeSingle()
-    if (wsRow) await admin.from('workspaces').update({ folios_balance: Math.max((wsRow.folios_balance as number) - 1, 0) }).eq('id', ws)
-    await admin.from('cotizaciones').update({ estado: 'enviada', folio_consumido: true, enviada_at: new Date().toISOString() }).eq('id', cot.id)
-    await admin.from('folio_transactions').insert({
-      workspace_id: ws, tipo: 'consumo', folios: -1, saldo_resultante: saldo,
-      referencia: 'API · ' + numero, cotizacion_id: cot.id, created_by: uid,
+    // 7) Consume 1 folio y marca "enviada" en una sola operación de la base. Si en
+    //    ese instante ya no hay folio (otra petición lo gastó), se borra el borrador.
+    const { data: saldo, error: eFolio } = await admin.rpc('consumir_folio_api', {
+      cotizacion_uuid: cot.id, usuario: uid, referencia: 'API · ' + numero,
     })
+    if (eFolio) {
+      await admin.from('cotizaciones').delete().eq('id', cot.id)
+      const sinFolios = /folios/i.test(eFolio.message)
+      return json({ error: sinFolios ? 'Sin folios disponibles. Recarga para enviar cotizaciones.' : 'No se pudo enviar la cotización: ' + eFolio.message }, sinFolios ? 402 : 500)
+    }
 
     return json({
       ok: true,

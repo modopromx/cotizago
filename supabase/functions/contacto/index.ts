@@ -1,6 +1,9 @@
 // Formulario de contacto público (sin login). Envía el mensaje al buzón de la
 // plataforma (smtp_from) con reply-to del visitante, para que el equipo pueda
 // responderle directo. Solo escribe al correo propio, nunca a terceros.
+// (29-oct-2026) Con límite: 3 mensajes por hora por visitante (huella de su IP,
+// nunca la IP en claro) y 40 al día en total. Antes no había tope y un bot podía
+// agotar la cuota del correo que también usan los avisos de la app.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 
@@ -11,6 +14,14 @@ const cors = {
 }
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
+
+const POR_HORA_IP = 3
+const POR_DIA_TOTAL = 40
+
+async function huella(texto: string) {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cg-contacto:' + texto))
+  return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 const esc = (s: string) => (s ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!))
 
@@ -30,6 +41,20 @@ Deno.serve(async (req) => {
     if (msg.length > 4000) return json({ error: 'Mensaje demasiado largo' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+    // Límite de envíos.
+    const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || req.headers.get('cf-connecting-ip') || 'sin-ip'
+    const ipHash = await huella(ip)
+    const haceUnaHora = new Date(Date.now() - 3600_000).toISOString()
+    const haceUnDia = new Date(Date.now() - 86_400_000).toISOString()
+    const [{ count: deEsteIp }, { count: delDia }] = await Promise.all([
+      admin.from('contacto_envios').select('*', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', haceUnaHora),
+      admin.from('contacto_envios').select('*', { count: 'exact', head: true }).gte('created_at', haceUnDia),
+    ])
+    if ((deEsteIp ?? 0) >= POR_HORA_IP || (delDia ?? 0) >= POR_DIA_TOTAL) {
+      return json({ error: 'Recibimos varios mensajes seguidos. Intenta de nuevo más tarde.' }, 429)
+    }
+    await admin.from('contacto_envios').insert({ ip_hash: ipHash })
     const { data: cfg } = await admin.from('config_plataforma').select('clave,valor')
     const c: Record<string, string> = {}
     ;(cfg ?? []).forEach((r: any) => { c[r.clave] = r.valor ?? '' })

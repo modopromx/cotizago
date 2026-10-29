@@ -74,7 +74,7 @@ const en: Dic = {
     passWeak: 'Use at least 8 characters, with letters and numbers.', tooManyTries: 'Too many attempts. Wait {{s}}s and try again.', captchaPend: 'Please wait for the security check to finish.',
     createdPlan: 'Account created! Redirecting to payment...', created: 'Account created! Welcome to Cotiza Go.',
     dupEmail: 'This email is already registered.', dupNombre: 'An account with that name already exists. If it’s yours, log in.',
-    dupTelefono: 'That phone is already registered to another account.', dupGeneric: 'Details already registered to another account.',
+    dupTelefono: 'That phone is already registered to another account.', dupGeneric: 'An account with that name or phone already exists. If it’s yours, log in; otherwise, contact us.',
     emailTaken: 'This email is already registered',
     forgot: 'Forgot your password?', recTitle: 'Reset your password', recSubtitle: 'Enter the email you signed up with and we will send you a link to create a new one.', recSend: 'Send link', recSending: 'Sending...', recSentTitle: 'Check your email', recSentDesc: 'If {{email}} has an account, you will receive a link to create a new password. Check your spam folder too.', backToLogin: 'Back to sign in', newPassTitle: 'Create your new password', newPassSubtitle: 'Use at least 8 characters, with letters and numbers.', newPass: 'New password', confirmPass: 'Confirm password', passMismatch: 'Passwords do not match.', savePass: 'Save password', savingPass: 'Saving...', passUpdated: 'Done! Your password was updated.', linkInvalid: 'This link is invalid or has expired.', requestNew: 'Request a new link', checkingLink: 'Checking the link...',
     rights: '© 2026 Cotiza Go · All rights reserved',

@@ -43,7 +43,7 @@ export default function DashboardPage() {
     if (!user || !profile?.workspace_id) return
     const ws = profile.workspace_id
     supabase.from('cotizaciones')
-      .select('id,numero,total,estado,created_at,cliente_nombre')
+      .select('id,numero,total,moneda,estado,created_at,cliente_nombre')
       .eq('workspace_id', ws)
       .order('created_at', { ascending: false })
       .then(({ data }) => { setCotis(data ?? []); setLoading(false) })
@@ -76,7 +76,15 @@ export default function DashboardPage() {
   const pendientes = cotisRango.filter(c => esPendiente(c.estado))
   const rechazadas = cotisRango.filter(c => c.estado === 'rechazada')
   const respondidas = aceptadas.length + rechazadas.length
-  const valorAceptado = aceptadas.reduce((s, c) => s + (Number(c.total) || 0), 0)
+  // Valor ganado POR MONEDA: antes se sumaban dólares y pesos como si fueran lo mismo.
+  const valorPorMoneda = aceptadas.reduce<Record<string, number>>((acc, c) => {
+    const m = String(c.moneda || 'MXN').toUpperCase()
+    acc[m] = (acc[m] || 0) + (Number(c.total) || 0)
+    return acc
+  }, {})
+  const monedas = Object.keys(valorPorMoneda).sort((a, b) => valorPorMoneda[b] - valorPorMoneda[a])
+  const monedaPrincipal = monedas.includes('MXN') ? 'MXN' : (monedas[0] || 'MXN')
+  const otrasMonedas = monedas.filter(m => m !== monedaPrincipal)
   const totalConEstado = aceptadas.length + pendientes.length + rechazadas.length
   const tasaAceptacion = respondidas ? Math.round((aceptadas.length / respondidas) * 100) : 0
   const pctRechazo = totalConEstado ? ((rechazadas.length / totalConEstado) * 100).toFixed(1) : '0'
@@ -128,7 +136,10 @@ export default function DashboardPage() {
     { label: t('dash.kpiAceptadas'), value: aceptadas.length, icon: CheckCircle2, color: 'text-success-700', bg: 'bg-success-50', sub: t('dash.subAceptacion', { n: tasaAceptacion }) },
     { label: t('dash.kpiPendientes'), value: pendientes.length, icon: Clock, color: 'text-amber-700', bg: 'bg-amber-50', sub: t('dash.subSeguimiento') },
     { label: t('dash.kpiRechazadas'), value: rechazadas.length, icon: XCircle, color: 'text-red-700', bg: 'bg-red-50', sub: t('dash.subDelTotal', { n: pctRechazo }) },
-    { label: t('dash.kpiValor'), value: formatCurrency(valorAceptado), icon: DollarSign, color: 'text-primary-700', bg: 'bg-primary-50', sub: t('dash.subGanadas') },
+    {
+      label: t('dash.kpiValor'), value: formatCurrency(valorPorMoneda[monedaPrincipal] || 0, monedaPrincipal), icon: DollarSign, color: 'text-primary-700', bg: 'bg-primary-50',
+      sub: otrasMonedas.length ? `+ ${otrasMonedas.map(m => formatCurrency(valorPorMoneda[m], m)).join(' · ')}` : t('dash.subGanadas'),
+    },
   ]
 
   const integraciones = [
@@ -261,7 +272,7 @@ export default function DashboardPage() {
                   <tr key={c.id} className="hover:bg-slate-50">
                     <td className="px-6 py-3 font-mono text-xs text-slate-500">{c.numero}</td>
                     <td className="px-4 py-3 text-slate-700">{c.cliente_nombre || '—'}</td>
-                    <td className="px-4 py-3 font-semibold text-navy-900">{formatCurrency(c.total)}</td>
+                    <td className="px-4 py-3 font-semibold text-navy-900">{formatCurrency(c.total, c.moneda || 'MXN')}</td>
                     <td className="px-4 py-3">
                       <span className={`badge ${ESTADO_BADGE[c.estado] ?? 'bg-slate-100 text-slate-500'}`}>{t(`estado.${c.estado}`, { defaultValue: c.estado })}</span>
                     </td>

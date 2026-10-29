@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import toast from 'react-hot-toast'
 
 interface Profile {
   id: string
@@ -49,6 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('id', userId)
       .single()
+    // Cuenta bloqueada desde el admin: la base ya no le muestra datos; se cierra
+    // la sesión y se le avisa en vez de dejarle un panel vacío.
+    if (data && data.activo === false) {
+      await supabase.auth.signOut()
+      setProfile(null)
+      toast.error('Tu cuenta está suspendida. Escríbenos a soporte si crees que es un error.', { duration: 8000 })
+      return
+    }
     if (data) setProfile(data)
   }
 

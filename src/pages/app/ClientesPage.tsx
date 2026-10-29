@@ -55,19 +55,21 @@ export default function ClientesPage() {
     e.preventDefault()
     if (!user) return
     setSaving(true)
-    if (editing) {
-      await supabase.from('clientes').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id)
-      toast.success(t('cli.actualizado'))
-    } else {
-      await supabase.from('clientes').insert({ ...form, user_id: user.id })
-      toast.success(t('cli.creado'))
-    }
-    setModal(false); load(); setSaving(false)
+    // Antes se decía «guardado» sin revisar el error; si falla, la ventana sigue
+    // abierta con lo que el usuario escribió.
+    const { error } = editing
+      ? await supabase.from('clientes').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id)
+      : await supabase.from('clientes').insert({ ...form, user_id: user.id })
+    setSaving(false)
+    if (error) { toast.error(t('qe.noGuardar') + error.message); return }
+    toast.success(editing ? t('cli.actualizado') : t('cli.creado'))
+    setModal(false); load()
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('cli.confEliminar'))) return
-    await supabase.from('clientes').update({ activo: false }).eq('id', id)
+    const { error } = await supabase.from('clientes').update({ activo: false }).eq('id', id)
+    if (error) { toast.error(t('qe.noGuardar') + error.message); return }
     toast.success(t('cli.eliminado')); load()
   }
 

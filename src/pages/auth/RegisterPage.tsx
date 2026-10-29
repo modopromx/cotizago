@@ -10,11 +10,6 @@ import { Eye, EyeOff, Check, Gift, Zap } from 'lucide-react'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
-  const DUPLICADO_MSG: Record<string, string> = {
-    email: t('auth.dupEmail'),
-    nombre: t('auth.dupNombre'),
-    telefono: t('auth.dupTelefono'),
-  }
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [form, setForm] = useState({ nombre: '', empresa: '', telefono: '', email: '', password: '' })
@@ -40,22 +35,17 @@ export default function RegisterPage() {
     if (!captchaToken) { toast.error(t('auth.captchaPend')); return }
     setLoading(true)
 
-    // Candado anti-duplicados (nombre completo, teléfono, email) antes de crear la cuenta.
-    const { data: dup } = await supabase.rpc('verificar_duplicado', {
-      p_user_id: null, p_nombre: form.nombre, p_telefono: form.telefono, p_email: form.email,
-    })
-    if (dup) {
-      toast.error(DUPLICADO_MSG[dup as string] ?? t('auth.dupGeneric'))
-      reiniciarCaptcha()
-      setLoading(false)
-      return
-    }
-
+    // El candado anti-duplicados (nombre completo y teléfono) corre en la base al
+    // crear la cuenta (trigger antes_de_registrar), detrás del captcha. Antes era una
+    // consulta que cualquiera podía hacer sin cuenta para saber quién es cliente.
     const { data, error } = await supabase.auth.signUp({
-      email: form.email, password: form.password, options: { captchaToken },
+      email: form.email, password: form.password,
+      options: { captchaToken, data: { nombre: form.nombre, empresa: form.empresa, telefono: form.telefono } },
     })
     if (error) {
-      toast.error(error.message === 'User already registered' ? t('auth.emailTaken') : error.message)
+      // Supabase no deja pasar el texto del trigger: llega como «Database error saving new user».
+      const dup = /database error saving new user|registro_duplicado/i.test(error.message)
+      toast.error(error.message === 'User already registered' ? t('auth.emailTaken') : dup ? t('auth.dupGeneric') : error.message)
       reiniciarCaptcha()
       setLoading(false)
       return

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { formatCurrency, formatDate } from '../../lib/utils'
+import { formatCurrency, formatDate, aFecha } from '../../lib/utils'
 import { descargarCotizacion } from '../../lib/cotizacionPdf'
 import { llenarPlantilla, abrirWhatsApp } from '../../lib/plantillas'
 import { enviarCotizacionPorEmail, generarLinkWhatsApp } from '../../lib/envios'
@@ -186,15 +186,27 @@ export default function CotizacionesPage() {
     if (!orig) return
     const { data: items } = await supabase.from('cotizacion_items').select('*').eq('cotizacion_id', id).order('orden')
     const numero = await supabase.rpc('generate_cotizacion_number', { user_uuid: user.id })
-    const { id: _id, created_at, updated_at, token, numero: _n, estado, folio_consumido, enviada_at, visto_at, visto_count, ...resto } = orig
+    // La copia es una cotización NUEVA: fecha de hoy, la misma vigencia en días y sin
+    // nada de la original (enlace de WhatsApp, respuesta, visitas, envío).
+    const { id: _id, created_at, updated_at, token, numero: _n, estado, folio_consumido, enviada_at, visto_at, visto_count,
+      visto_ip, visto_pais, respuesta, wa_link, fecha_emision, fecha_vencimiento, ...resto } = orig
+    const diasVigencia = fecha_emision && fecha_vencimiento
+      ? Math.round((aFecha(fecha_vencimiento).getTime() - aFecha(fecha_emision).getTime()) / 86_400_000) : null
+    let nuevaVence: string | null = null
+    if (diasVigencia != null && diasVigencia >= 0) {
+      const d = new Date(); d.setDate(d.getDate() + diasVigencia)
+      nuevaVence = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
     const { data: nueva, error } = await supabase.from('cotizaciones')
-      .insert({ ...resto, numero: numero.data, estado: 'borrador', folio_consumido: false })
+      .insert({ ...resto, numero: numero.data, estado: 'borrador', folio_consumido: false, fecha_vencimiento: nuevaVence })
       .select('id').single()
     if (error || !nueva) { toast.error(t('cot.noDuplicar')); return }
     if (items?.length) {
-      await supabase.from('cotizacion_items').insert(
+      const { error: eItems } = await supabase.from('cotizacion_items').insert(
         items.map(({ id: _i, cotizacion_id, created_at: _c, ...it }) => ({ ...it, cotizacion_id: nueva.id }))
       )
+      // Sin conceptos la copia no sirve: se borra y se avisa.
+      if (eItems) { await supabase.from('cotizaciones').delete().eq('id', nueva.id); toast.error(t('cot.noDuplicar')); return }
     }
     toast.success(t('cot.duplicada')); load()
   }

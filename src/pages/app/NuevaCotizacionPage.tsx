@@ -11,7 +11,13 @@ import { Plus, Trash2, Save, ArrowLeft, AlertTriangle, UserPlus, Package } from 
 
 interface Item { nombre: string; descripcion: string; unidad: string; cantidad: number; precio_unitario: number; iva_porcentaje: number; descuento_porcentaje: number; subtotal: number }
 
-const emptyItem = (): Item => ({ nombre: '', descripcion: '', unidad: '', cantidad: 1, precio_unitario: 0, iva_porcentaje: 16, descuento_porcentaje: 0, subtotal: 0 })
+const emptyItem = (iva = 16): Item => ({ nombre: '', descripcion: '', unidad: '', cantidad: 1, precio_unitario: 0, iva_porcentaje: iva, descuento_porcentaje: 0, subtotal: 0 })
+
+// Fecha local «AAAA-MM-DD» a N días de hoy (para la vigencia por defecto).
+const enDias = (n: number) => {
+  const d = new Date(); d.setDate(d.getDate() + n)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const UNIDADES = ['servicio', 'hora', 'horas', 'pieza', 'piezas', 'mes', 'meses', 'día', 'días', 'proyecto', 'paquete']
 
@@ -39,6 +45,28 @@ export default function NuevaCotizacionPage() {
   const [saving, setSaving] = useState(false)
   const [intentado, setIntentado] = useState(false)
   const [enviarCot, setEnviarCot] = useState<any>(null)   // cotización recién guardada → modal de envío
+
+  // Valores por defecto de Configuración (moneda, IVA, vigencia y condiciones).
+  // Antes se ignoraban: toda cotización nueva salía en MXN, 16% y sin vencimiento.
+  const [ivaDefault, setIvaDefault] = useState(16)
+  useEffect(() => {
+    if (!profile?.workspace_id) return
+    supabase.from('empresas').select('moneda,impuesto_default,vigencia_dias,condiciones')
+      .eq('workspace_id', profile.workspace_id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        const iva = data.impuesto_default != null ? Number(data.impuesto_default) : 16
+        setIvaDefault(iva)
+        // Solo toca los conceptos que el usuario aún no ha llenado.
+        setItems(prev => prev.map(it => (!it.nombre && !it.precio_unitario) ? { ...it, iva_porcentaje: iva } : it))
+        setForm(f => ({
+          ...f,
+          moneda: data.moneda || f.moneda,
+          terminos: data.condiciones?.trim() ? data.condiciones : f.terminos,
+          fecha_vencimiento: f.fecha_vencimiento || (Number(data.vigencia_dias) > 0 ? enDias(Number(data.vigencia_dias)) : ''),
+        }))
+      })
+  }, [profile?.workspace_id])
 
   useEffect(() => {
     if (!user) return
@@ -118,9 +146,15 @@ export default function NuevaCotizacionPage() {
 
     if (error) { toast.error(t('qe.errorGuardar') + error.message); setSaving(false); return }
 
-    await supabase.from('cotizacion_items').insert(
+    const { error: eItems } = await supabase.from('cotizacion_items').insert(
       items.map((it, idx) => ({ cotizacion_id: cot.id, ...it, orden: idx }))
     )
+    // Si los conceptos no se guardaron, una cotización vacía no debe quedar ni
+    // ofrecerse para enviar: se borra y el usuario conserva lo que escribió.
+    if (eItems) {
+      await supabase.from('cotizaciones').delete().eq('id', cot.id)
+      toast.error(t('qe.errorGuardar') + eItems.message); setSaving(false); return
+    }
 
     toast.success(t('qe.borradorOk'))
     setSaving(false)
@@ -266,7 +300,7 @@ export default function NuevaCotizacionPage() {
                 )
               })}
             </div>
-            <button type="button" data-tour="cot-concepto" onClick={() => setItems(prev => [...prev, emptyItem()])} className="btn-secondary w-full mt-3 justify-center">
+            <button type="button" data-tour="cot-concepto" onClick={() => setItems(prev => [...prev, emptyItem(ivaDefault)])} className="btn-secondary w-full mt-3 justify-center">
               <Plus className="w-4 h-4" aria-hidden="true" /> {t('qe.agregarConcepto')}
             </button>
             {productos.length === 0 && (

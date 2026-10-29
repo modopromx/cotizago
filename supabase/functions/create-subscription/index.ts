@@ -2,6 +2,9 @@
 // Devuelve el clientSecret para montar <EmbeddedCheckout> en el panel.
 // La activación NO ocurre aquí: la hace el webhook cuando Stripe confirma el
 // pago. Así nadie se activa un módulo sin haber pagado.
+// (29-oct-2026) Antes de abrir un cobro nuevo se cierran (expire) los cobros
+// abiertos del mismo módulo: con dos pestañas o dos clics se podían pagar dos
+// sesiones y quedaban DOS suscripciones cobrando cada mes.
 import Stripe from 'npm:stripe@17'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
@@ -76,6 +79,16 @@ Deno.serve(async (req) => {
       customerId = cliente.id
       await admin.from('workspaces').update({ [campoCliente]: customerId }).eq('id', ws)
     }
+
+    // Cierra los cobros abiertos de este mismo módulo para este cliente.
+    try {
+      const abiertas = await stripe.checkout.sessions.list({ customer: customerId, status: 'open', limit: 100 })
+      for (const s of abiertas.data) {
+        if (s.mode === 'subscription' && s.metadata?.clave === clave && s.metadata?.workspace_id === ws) {
+          await stripe.checkout.sessions.expire(s.id).catch(() => {})
+        }
+      }
+    } catch { /* si Stripe no responde la lista, se sigue: el webhook también protege */ }
 
     const origin = req.headers.get('origin') ?? 'http://localhost:5173'
     const session = await stripe.checkout.sessions.create({

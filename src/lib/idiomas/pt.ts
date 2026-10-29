@@ -74,7 +74,7 @@ const pt: Dic = {
     passWeak: 'Use pelo menos 8 caracteres, com letras e números.', tooManyTries: 'Muitas tentativas. Aguarde {{s}}s e tente novamente.', captchaPend: 'Aguarde a verificação de segurança terminar.',
     createdPlan: 'Conta criada! Redirecionando para o pagamento...', created: 'Conta criada! Bem-vindo ao Cotiza Go.',
     dupEmail: 'Este e-mail já está cadastrado.', dupNombre: 'Já existe uma conta com esse nome. Se for sua, faça login.',
-    dupTelefono: 'Esse telefone já está cadastrado em outra conta.', dupGeneric: 'Dados já cadastrados em outra conta.',
+    dupTelefono: 'Esse telefone já está cadastrado em outra conta.', dupGeneric: 'Já existe uma conta com esse nome ou telefone. Se for sua, entre; se não, fale conosco.',
     emailTaken: 'Este e-mail já está cadastrado',
     forgot: 'Esqueceu sua senha?', recTitle: 'Recupere sua senha', recSubtitle: 'Digite o e-mail com que você se cadastrou e enviaremos um link para criar uma nova.', recSend: 'Enviar link', recSending: 'Enviando...', recSentTitle: 'Confira seu e-mail', recSentDesc: 'Se {{email}} tiver uma conta, você receberá um link para criar uma nova senha. Confira também a pasta de spam.', backToLogin: 'Voltar para o login', newPassTitle: 'Crie sua nova senha', newPassSubtitle: 'Use pelo menos 8 caracteres, com letras e números.', newPass: 'Nova senha', confirmPass: 'Confirme a senha', passMismatch: 'As senhas não coincidem.', savePass: 'Salvar senha', savingPass: 'Salvando...', passUpdated: 'Pronto! Sua senha foi atualizada.', linkInvalid: 'O link é inválido ou expirou.', requestNew: 'Pedir um novo link', checkingLink: 'Verificando o link...',
     rights: '© 2026 Cotiza Go · Todos os direitos reservados',
