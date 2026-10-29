@@ -14,8 +14,11 @@
 // activo y configuró su servidor (integraciones.tipo='email'), la cotización sale
 // desde SU correo con SU plantilla (plantillas_mensajes canal email, envío inicial).
 // Si no, sale como siempre: buzón de Cotiza Go y diseño del sistema.
+// (29-oct-2026) Se envía con nodemailer: denomailer partía las líneas largas y se
+// comía puntos (el enlace llegaba como «cotizago.commx» y no abría). El correo
+// propio ya no es texto plano: va con el diseño, con el logo y el color de la empresa.
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
+import nodemailer from 'npm:nodemailer@6.9.16'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -46,6 +49,48 @@ function dinero(n, moneda) {
   catch { return `$${(Number(n) || 0).toFixed(2)}` }
 }
 
+/** ¿El color es claro? (para decidir texto blanco o azul marino encima). */
+function esClaro(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex ?? '').trim())
+  if (!m) return false
+  const n = parseInt(m[1], 16)
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 160
+}
+
+/** Correo de cotización con la marca de la empresa y el texto de SU plantilla. */
+function htmlMarca(texto, vars, emp) {
+  const enlace = String(vars['enlace_publico'] || '')
+  const color = /^#[0-9a-f]{6}$/i.test(String(emp?.color_principal ?? '')) ? emp.color_principal : '#06213B'
+  const tinta = esClaro(color) ? '#06213B' : '#ffffff'
+  const logo = /^https:\/\//.test(String(emp?.logo_url ?? '')) ? emp.logo_url : ''
+  const nombre = esc(vars['empresa'] || '')
+  // El enlace va en el botón: la línea del texto que lo trae se quita.
+  const parrafos = String(texto).split(/\n{2,}/)
+    .map((p) => p.split('\n').filter((l) => !enlace || !l.includes(enlace)).join('\n').trim())
+    .filter(Boolean)
+    .map((p) => `<p style="margin:0 0 14px;color:#334155;font-size:15px;line-height:1.6">${esc(p).replace(/\n/g, '<br>')}</p>`)
+    .join('')
+  const fila = (k, v, fuerte = false) => v ? `<tr><td style="color:#64748b;font-size:13px">${k}</td><td align="right" style="color:#06213B;font-size:${fuerte ? '20px;font-weight:800' : '13px'}">${esc(v)}</td></tr>` : ''
+  const pie = [vars['empresa'], vars['empresa_telefono'], vars['empresa_email']].filter(Boolean).map(esc).join(' · ')
+  return `<div style="margin:0;padding:24px 0;background:#f3f6f9;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden">
+<tr><td style="height:6px;background:${color}"></td></tr>
+<tr><td style="padding:26px 32px 8px;text-align:center">${logo ? `<img src="${esc(logo)}" alt="${nombre}" style="max-height:64px;max-width:220px">` : `<span style="font-size:22px;font-weight:800;color:#06213B">${nombre}</span>`}</td></tr>
+<tr><td style="padding:16px 32px 32px">
+<h1 style="margin:0 0 18px;font-size:20px;color:#06213B">Cotización ${esc(vars['folio'] || '')}</h1>
+${parrafos}
+<table width="100%" cellpadding="9" cellspacing="0" style="background:#f8fafc;border-radius:10px;margin-top:8px">
+${fila('Número:', vars['folio'])}${fila('Fecha:', vars['fecha'])}${fila('Vigencia:', vars['vigencia'])}${fila('Monto total:', vars['total'], true)}
+</table>
+${enlace ? `<div style="text-align:center;margin:26px 0 6px"><a href="${esc(enlace)}" style="display:inline-block;background:${color};color:${tinta};text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700;font-size:15px">Ver cotización completa</a></div>
+<p style="text-align:center;color:#94a3b8;font-size:12px;margin:14px 0 0">También puedes copiar este enlace:<br><a href="${esc(enlace)}" style="color:#0B6DAD;word-break:break-all">${esc(enlace)}</a></p>` : ''}
+</td></tr>
+${pie ? `<tr><td style="padding:16px 32px 26px;text-align:center;color:#94a3b8;font-size:12px;border-top:1px solid #eef2f6">${pie}</td></tr>` : ''}
+</table></td></tr></table></div>`
+}
+
 async function getSecret(admin, clave) {
   const { data } = await admin.from('plataforma_secretos').select('valor').eq('clave', clave).maybeSingle()
   return (data && data.valor) || ''
@@ -72,6 +117,7 @@ Deno.serve(async (req) => {
     let replyTo = ''
     let vars = {}
     let wsCot = ''
+    let empCot = null
     if (PROPIOS.includes(clave)) {
       para = user.email ?? ''
       const saldo = Number(prof?.folios_balance ?? 0)
@@ -97,6 +143,7 @@ Deno.serve(async (req) => {
       para = cot.cliente_email ?? ''
       wsCot = cot.workspace_id
       const { data: emp } = await admin.from('empresas').select('*').eq('workspace_id', cot.workspace_id).maybeSingle()
+      empCot = emp
       replyTo = emailValido(emp?.email) ? emp.email : ''
       vars = {
         cliente: corto(cot.cliente_nombre || 'Cliente', 80),
@@ -167,14 +214,12 @@ Deno.serve(async (req) => {
 
     vars = { plataforma: c.nombre_plataforma || 'Cotiza Go', ...vars }
     let asunto: string, texto: string, html: string
-    if (propio && tplPropia) {
-      // Plantilla del usuario (texto): se escapa y el enlace queda clicable.
-      asunto = corto(render(tplPropia.asunto || 'Cotización {{folio}} de {{empresa}}', vars, false), 200)
-      texto = render(tplPropia.cuerpo, vars, false)
-      const enlace = String(vars['enlace_publico'] || '')
-      let cuerpoHtml = esc(texto).replace(/\n/g, '<br>')
-      if (enlace) cuerpoHtml = cuerpoHtml.split(esc(enlace)).join(`<a href="${esc(enlace)}">${esc(enlace)}</a>`)
-      html = `<div style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1e293b">${cuerpoHtml}</div>`
+    if (propio) {
+      // Correo propio: SU plantilla (o la del sistema si no tiene) dentro del diseño
+      // con SU marca; nunca con el encabezado de Cotiza Go.
+      asunto = corto(render(tplPropia?.asunto || 'Cotización {{folio}} de {{empresa}}', vars, false), 200)
+      texto = render(tplPropia?.cuerpo || tpl.cuerpo, vars, false)
+      html = htmlMarca(texto, vars, empCot)
     } else {
       asunto = corto(render(tpl.asunto, vars, false), 200)
       texto = render(tpl.cuerpo, vars, false)
@@ -186,23 +231,22 @@ Deno.serve(async (req) => {
       const srv = propio
         ? { hostname: propio.host, port: propio.port, user: propio.usuario, pass: propio.pass, from: propio.nombre ? `${propio.nombre} <${propio.from}>` : propio.from, reply: propio.from }
         : { hostname: host, port, user: fromEmail, pass, from: `${fromNombre} <${fromEmail}>`, reply: replyTo }
-      const client = new SMTPClient({
-        connection: {
-          hostname: srv.hostname,
-          port: srv.port,
-          tls: srv.port === 465, // 465 = TLS implicito; 587 = STARTTLS
-          auth: { username: srv.user, password: srv.pass },
-        },
+      const transporte = nodemailer.createTransport({
+        host: srv.hostname,
+        port: srv.port,
+        secure: srv.port === 465, // 465 = TLS implicito; 587 = STARTTLS
+        auth: { user: srv.user, pass: srv.pass },
+        connectionTimeout: 15000,
       })
-      await client.send({
+      await transporte.sendMail({
         from: srv.from,
         to: para,
         subject: asunto,
-        content: texto,
+        text: texto,
         html,
         ...(srv.reply ? { replyTo: srv.reply } : {}),
       })
-      await client.close()
+      transporte.close()
       ok = true
     } catch (e) {
       detalle = String(e).slice(0, 300)
