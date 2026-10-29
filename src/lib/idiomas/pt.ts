@@ -222,9 +222,9 @@ const pt: Dic = {
     historial: 'Histórico de recargas', cargando: 'Carregando...', sinRecargas: 'Sem recargas ainda. Seu primeiro pacote aparecerá aqui.',
     colFecha: 'Data', colPaquete: 'Pacote', colFolios: 'Créditos', colTotal: 'Total', colEstado: 'Status',
     recarga: 'Recarga', aprobado: 'Aprovado', pendiente: 'Pendente', solicitar: 'Solicitar {{doc}}', miEmpresa: 'Minha empresa',
-    facEnProceso: 'Em andamento', facEmitida: 'Emitida', facPdf: 'PDF', facXml: 'XML',
+    facAutoEspera: 'Em breve', facAutoAviso: 'Sua nota fiscal será gerada automaticamente em breve e enviada por e-mail. Nada a fazer.', facEnProceso: 'Em andamento', facEmitida: 'Emitida', facPdf: 'PDF', facXml: 'XML',
     facturasTitle: 'Notas e faturas', facturasSubtitle: 'Solicite sua nota fiscal (México) ou baixe sua nota (outros países) por recarga.', verFacturas: 'Veja seus comprovantes em',
-    pieMxA: 'Precisa de nota fiscal? Configure seu ID fiscal e regime em ', pieMxB: '. O PDF e o XML (CFDI) aparecerão aqui quando a administração os carregar.',
+    pieMxA: 'Precisa de nota fiscal? Configure seu ID fiscal e regime em ', pieMxB: '. Com seus dados fiscais completos, sua nota é gerada automaticamente ao pagar e enviada por e-mail.',
     pieIntlA: 'Fora do México emitimos uma nota de remessa com seu ID fiscal para você deduzir localmente. Adicione-o em ', pieIntlB: '. O documento aparecerá aqui quando estiver pronto.',
   },
   mod: {

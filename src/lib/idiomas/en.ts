@@ -222,9 +222,9 @@ const en: Dic = {
     historial: 'Top-up history', cargando: 'Loading...', sinRecargas: 'No top-ups yet. Your first pack will show up here.',
     colFecha: 'Date', colPaquete: 'Pack', colFolios: 'Credits', colTotal: 'Total', colEstado: 'Status',
     recarga: 'Top-up', aprobado: 'Approved', pendiente: 'Pending', solicitar: 'Request {{doc}}', miEmpresa: 'My company',
-    facEnProceso: 'In progress', facEmitida: 'Issued', facPdf: 'PDF', facXml: 'XML',
+    facAutoEspera: 'Coming shortly', facAutoAviso: 'Your invoice will be generated automatically shortly and emailed to you. No action needed.', facEnProceso: 'In progress', facEmitida: 'Issued', facPdf: 'PDF', facXml: 'XML',
     facturasTitle: 'Notes & invoices', facturasSubtitle: 'Request your invoice (Mexico) or download your note (other countries) for each top-up.', verFacturas: 'Find your documents in',
-    pieMxA: 'Need an invoice? Set up your tax ID and regime in ', pieMxB: '. The PDF and XML (CFDI) will appear here once admin uploads them.',
+    pieMxA: 'Need an invoice? Set up your tax ID and regime in ', pieMxB: '. With your tax details complete, your invoice is generated automatically when you pay and emailed to you.',
     pieIntlA: 'Outside Mexico we issue a delivery note with your tax ID so you can deduct it locally. Add it in ', pieIntlB: '. The document will appear here when ready.',
   },
   mod: {

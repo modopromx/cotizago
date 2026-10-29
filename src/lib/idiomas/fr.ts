@@ -222,9 +222,9 @@ const fr: Dic = {
     historial: 'Historique des recharges', cargando: 'Chargement...', sinRecargas: 'Aucune recharge pour l’instant. Votre premier pack apparaîtra ici.',
     colFecha: 'Date', colPaquete: 'Pack', colFolios: 'Crédits', colTotal: 'Total', colEstado: 'Statut',
     recarga: 'Recharge', aprobado: 'Approuvé', pendiente: 'En attente', solicitar: 'Demander {{doc}}', miEmpresa: 'Mon entreprise',
-    facEnProceso: 'En cours', facEmitida: 'Émise', facPdf: 'PDF', facXml: 'XML',
+    facAutoEspera: 'Bientôt disponible', facAutoAviso: 'Votre facture sera générée automatiquement sous peu et envoyée par e-mail. Aucune action requise.', facEnProceso: 'En cours', facEmitida: 'Émise', facPdf: 'PDF', facXml: 'XML',
     facturasTitle: 'Notes et factures', facturasSubtitle: 'Demandez votre facture (Mexique) ou téléchargez votre note (autres pays) pour chaque recharge.', verFacturas: 'Retrouvez vos justificatifs dans',
-    pieMxA: 'Besoin d’une facture ? Configurez votre n° fiscal et régime dans ', pieMxB: '. Le PDF et le XML (CFDI) apparaîtront ici une fois chargés par l’administration.',
+    pieMxA: 'Besoin d’une facture ? Configurez votre n° fiscal et régime dans ', pieMxB: '. Avec vos données fiscales complètes, votre facture est générée automatiquement au paiement et envoyée par e-mail.',
     pieIntlA: 'Hors du Mexique, nous émettons un bon de livraison avec votre n° fiscal pour une déduction locale. Ajoutez-le dans ', pieIntlB: '. Le document apparaîtra ici une fois prêt.',
   },
   mod: {

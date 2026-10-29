@@ -1,6 +1,7 @@
 // Notas y facturas del usuario (separado de "Comprar folios").
-// Por cada recarga: en México se solicita la factura (CFDI PDF+XML que emite el
-// admin); fuera de México se genera al instante una nota de remisión (no fiscal).
+// Por cada pago: en México el CFDI se genera solo al pagar si «Mi empresa» tiene
+// los datos fiscales completos (factura-automatica); si no, el cliente lo pide
+// aquí. Fuera de México se genera al instante una nota de remisión (no fiscal).
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +26,8 @@ export default function FacturasPage() {
 
   const esMexico = (empresa?.pais ?? 'MX') === 'MX'
   const docFiscal = esMexico ? t('fol.factura') : t('fol.notaRemision')
+  // Factura automática detenida porque se acabaron los timbres: se genera sola en breve.
+  const enEspera = esMexico && Object.values(facturablesPorPago).some((f: any) => f.estado !== 'facturado' && f.auto_estado === 'en_espera_timbres')
 
   const loadHistorial = () => {
     if (!user || !profile?.workspace_id) return
@@ -45,7 +48,7 @@ export default function FacturasPage() {
   // Facturables por pago (nuevo flujo automático de CFDI vía el hub).
   const loadFacturables = () => {
     if (!profile?.workspace_id) return
-    supabase.from('facturables').select('pago_id, token, estado').eq('workspace_id', profile.workspace_id)
+    supabase.from('facturables').select('pago_id, token, estado, auto_estado').eq('workspace_id', profile.workspace_id)
       .then(({ data }) => {
         const map: Record<string, any> = {}
         ;(data ?? []).forEach((f: any) => { if (f.pago_id) map[f.pago_id] = f })
@@ -127,6 +130,12 @@ export default function FacturasPage() {
         <p className="text-slate-500 text-sm">{t('fol.facturasSubtitle')}</p>
       </div>
 
+      {enEspera && (
+        <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {t('fol.facAutoAviso')}
+        </div>
+      )}
+
       {loading ? (
         <div className="card p-6 text-center text-slate-500 text-sm">{t('fol.cargando')}</div>
       ) : historial.length === 0 ? (
@@ -166,6 +175,9 @@ export default function FacturasPage() {
                                 <Download className="w-3.5 h-3.5" aria-hidden="true" /> Ver factura
                               </button>
                             )
+                          }
+                          if (fb?.auto_estado === 'en_espera_timbres') {
+                            return <span className="badge bg-amber-50 text-amber-700">{t('fol.facAutoEspera')}</span>
                           }
                           if (fb) {
                             return (

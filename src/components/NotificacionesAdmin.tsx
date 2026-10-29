@@ -3,6 +3,7 @@
 //  - Pagos recibidos (paquetes de folios acreditados)
 //  - Módulos/servicios contratados
 //  - Solicitudes de factura
+//  - Facturas automáticas detenidas (sin timbres en SENHUB o con error)
 // NO muestra cotizaciones de los clientes (eso es actividad interna de cada
 // usuario, no algo que el superadmin deba vigilar).
 // El desplegable va en posición fija porque el header vive dentro de un
@@ -34,11 +35,12 @@ export default function NotificacionesAdmin() {
   const ref = useRef<HTMLDivElement>(null)
 
   const cargar = async () => {
-    const [regs, pagos, mods, facturas] = await Promise.all([
+    const [regs, pagos, mods, facturas, autos] = await Promise.all([
       supabase.from('profiles').select('id,nombre,email,empresa,created_at').order('created_at', { ascending: false }).limit(10),
       supabase.from('pagos').select('id,paquete_nombre,monto,moneda,created_at').or('acreditado.eq.true,estado.eq.aprobado').order('created_at', { ascending: false }).limit(10),
       supabase.from('modulo_suscripciones').select('id,clave,monto,created_at,estado').eq('estado', 'activa').order('created_at', { ascending: false }).limit(10),
       supabase.from('facturas_solicitudes').select('id,razon_social,rfc,monto,moneda,created_at').order('created_at', { ascending: false }).limit(10),
+      supabase.from('facturables').select('id,descripcion,total,moneda,auto_estado,auto_error,created_at').eq('estado', 'pendiente').in('auto_estado', ['en_espera_timbres', 'error']).order('created_at', { ascending: false }).limit(10),
     ])
 
     const alertas: Alerta[] = [
@@ -64,6 +66,14 @@ export default function NotificacionesAdmin() {
         id: 'fac-' + f.id, tipo: 'factura',
         titulo: 'Solicitud de factura',
         detalle: `${f.razon_social || f.rfc || 'Sin datos'} · ${formatCurrency(f.monto, f.moneda)}`,
+        fecha: f.created_at, link: '/admin/pagos',
+      })),
+      ...(autos.data ?? []).map((f: any): Alerta => ({
+        id: 'auto-' + f.id, tipo: 'factura',
+        titulo: f.auto_estado === 'en_espera_timbres' ? 'Sin timbres: factura en espera' : 'Factura automática con error',
+        detalle: f.auto_estado === 'en_espera_timbres'
+          ? `Compra timbres en SENHUB · ${formatCurrency(f.total, f.moneda)}`
+          : `${f.auto_error ?? f.descripcion ?? 'Revisar'} · ${formatCurrency(f.total, f.moneda)}`,
         fecha: f.created_at, link: '/admin/pagos',
       })),
     ]

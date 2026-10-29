@@ -232,9 +232,9 @@ const es = {
     historial: 'Historial de recargas', cargando: 'Cargando...', sinRecargas: 'Sin recargas aún. Cuando compres tu primer paquete aparecerá aquí.',
     colFecha: 'Fecha', colPaquete: 'Paquete', colFolios: 'Folios', colTotal: 'Total', colEstado: 'Estado',
     recarga: 'Recarga', aprobado: 'Aprobado', pendiente: 'Pendiente', solicitar: 'Solicitar {{doc}}', miEmpresa: 'Mi empresa',
-    facEnProceso: 'En proceso', facEmitida: 'Emitida', facPdf: 'PDF', facXml: 'XML',
+    facAutoEspera: 'Se genera en breve', facAutoAviso: 'Tu factura se generará automáticamente en breve y te llegará por correo. No tienes que hacer nada.', facEnProceso: 'En proceso', facEmitida: 'Emitida', facPdf: 'PDF', facXml: 'XML',
     facturasTitle: 'Notas y facturas', facturasSubtitle: 'Solicita tu factura (México) o descarga tu nota (otros países) por cada recarga.', verFacturas: 'Consulta tus comprobantes en',
-    pieMxA: '¿Necesitas facturar? Configura tu RFC y régimen en ', pieMxB: '. El PDF y XML (CFDI) aparecerán aquí cuando administración los cargue.',
+    pieMxA: '¿Necesitas facturar? Configura tu RFC y régimen en ', pieMxB: '. Con tus datos fiscales completos, tu factura se genera sola al pagar y te llega por correo.',
     pieIntlA: 'Fuera de México emitimos una nota de remisión con tu ID fiscal para que la deduzcas localmente. Agrégalo en ', pieIntlB: '. El documento aparecerá aquí cuando esté listo.',
   },
   mod: {
