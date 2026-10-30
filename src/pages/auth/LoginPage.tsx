@@ -7,6 +7,7 @@ import SelectorIdioma from '../../components/SelectorIdioma'
 import Turnstile from '../../components/Turnstile'
 import toast from 'react-hot-toast'
 import { Eye, EyeOff } from 'lucide-react'
+import { enApp } from '../../lib/enApp'
 
 // Bloqueo local anti-fuerza-bruta: tras varios intentos fallidos se congela el
 // botón unos segundos (complementa el límite del lado servidor de Supabase).
@@ -120,10 +121,13 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-slate-500 mt-7">
-            {t('auth.noAccount')}{' '}
-            <Link to="/registro" className="text-primary-700 hover:text-primary-700 font-semibold">{t('auth.createFree')}</Link>
-          </p>
+          {/* En las apps (Android e iPhone) solo se entra: la cuenta se crea en la web. Decisión de Omar, 30-oct-2026. */}
+          {!enApp() && (
+            <p className="text-center text-sm text-slate-500 mt-7">
+              {t('auth.noAccount')}{' '}
+              <Link to="/registro" className="text-primary-700 hover:text-primary-700 font-semibold">{t('auth.createFree')}</Link>
+            </p>
+          )}
         </div>
 
         <p className="text-center text-white/50 text-xs mt-6">{t('auth.rights')}</p>

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatDate, ESTADO_LABELS } from '../../lib/utils'
 import { buildCotizacionPDF } from '../../lib/pdf'
 import { descargarPDF } from '../../lib/descarga'
+import { enApp } from '../../lib/enApp'
 import toast from 'react-hot-toast'
 import { FileText, CheckCircle, XCircle, Eye, MapPin, Calendar, Phone, Mail, Download, Sparkles, ArrowRight } from 'lucide-react'
 
@@ -314,6 +315,8 @@ export default function CotizacionPublicaPage() {
 
         {/* Gancho de registro (bucle viral): quien recibe esta cotización es un
             negocio que también cotiza. Marca propia de Cotiza Go (no del emisor). */}
+        {/* En las apps no se invita a registrarse. */}
+        {!enApp() && (
         <div className="bg-gradient-to-br from-navy-900 to-primary-600 rounded-2xl p-6 text-center shadow-sm">
           <span className="inline-flex w-11 h-11 rounded-xl bg-white/15 items-center justify-center mb-2">
             <Sparkles className="w-5 h-5 text-white" aria-hidden="true" />
@@ -332,6 +335,7 @@ export default function CotizacionPublicaPage() {
             Hecho con <Link to="/" className="underline hover:text-white">Cotiza Go</Link>
           </p>
         </div>
+        )}
       </div>
     </div>
   )

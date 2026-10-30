@@ -129,7 +129,8 @@ function AppRoutes() {
 
       {/* Auth */}
       <Route path="/login" element={user ? <Navigate to={isAdminUser ? '/admin' : '/app'} /> : <LoginPage />} />
-      <Route path="/registro" element={user ? <RegistroConSesion /> : <RegisterPage />} />
+      {/* En las apps no se crean cuentas: /registro manda a entrar. */}
+      <Route path="/registro" element={user ? <RegistroConSesion /> : enApp() ? <Navigate to="/login" replace /> : <RegisterPage />} />
       <Route path="/recuperar" element={<RecuperarPage />} />
       {/* Sin redirección por sesión: el enlace del correo ABRE una sesión temporal. */}
       <Route path="/nueva-contrasena" element={<NuevaContrasenaPage />} />
